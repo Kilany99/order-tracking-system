@@ -2,6 +2,7 @@
 using DriverService.Domain.Interfaces;
 using DriverService.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using NpgsqlTypes;
 
 
 namespace DriverService.Infrastructure.Repositories
@@ -42,9 +43,9 @@ namespace DriverService.Infrastructure.Repositories
 
         public async Task DeleteAsync(Guid id)
         {
-            var driver = await GetByIdAsync(id)??throw new KeyNotFoundException("driver with given Id not found");
-          
-             _context.Drivers.Remove(driver);
+            var driver = await GetByIdAsync(id) ?? throw new KeyNotFoundException("driver with given Id not found");
+
+            _context.Drivers.Remove(driver);
         }
 
         public async Task<bool> SaveChangesAsync()
@@ -78,10 +79,10 @@ namespace DriverService.Infrastructure.Repositories
 
         public async Task<RefreshToken> GetRefreshTokenAsync(string token)
         {
-           
+
             return await _context.RefreshTokens
                 .Include(rt => rt.Driver)
-                .FirstOrDefaultAsync(rt => rt.Token == token)??
+                .FirstOrDefaultAsync(rt => rt.Token == token) ??
                 throw new KeyNotFoundException("Token not found!");
         }
 
@@ -89,7 +90,7 @@ namespace DriverService.Infrastructure.Repositories
         {
             return await _context.DriverAuths
                 .Include(a => a.Driver)
-                .FirstOrDefaultAsync(a => a.Email == email)??
+                .FirstOrDefaultAsync(a => a.Email == email) ??
                 throw new KeyNotFoundException("Not found for given email!");
         }
     }

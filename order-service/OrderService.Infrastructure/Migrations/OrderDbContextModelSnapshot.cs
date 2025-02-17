@@ -228,6 +228,9 @@ namespace OrderService.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("AssignedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("CustomerId")
                         .IsRequired()
                         .HasColumnType("text");
@@ -242,6 +245,9 @@ namespace OrderService.Infrastructure.Migrations
 
                     b.Property<double>("DeliveryLongitude")
                         .HasColumnType("double precision");
+
+                    b.Property<Guid?>("DriverId")
+                        .HasColumnType("uuid");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");

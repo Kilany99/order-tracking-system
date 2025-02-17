@@ -1,16 +1,24 @@
+using Confluent.Kafka;
+using Microsoft.AspNet.SignalR.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using OrderService.API.Consumers;
 using OrderService.API.DependencyInjection;
 using OrderService.API.Helpers;
+using OrderService.API.Hubs;
 using OrderService.API.Middleware;
+using OrderService.API.Models;
+using OrderService.API.Serialization;
 using OrderService.Domain.Entities;
 using OrderService.Infrastructure.Data;
 using Serilog;
 using System.Reflection;
 using System.Text;
+using System.Text.Json; 
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -63,6 +71,27 @@ builder.Services.AddScoped<JwtTokenHelper>();
 builder.Services.AddApplication();  // Extension method to register MediatR, FluentValidation
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHostedService<DriverLocationConsumer>();
+builder.Services.AddSingleton<IProducer<string, OrderAssignmentFailedEvent>>(sp => 
+{
+    var config = new ProducerConfig {
+        BootstrapServers = builder.Configuration["Kafka:BootstrapServers"]
+    };
+    return new ProducerBuilder<string, OrderAssignmentFailedEvent>(config)
+        .SetValueSerializer(new JsonSerializer<OrderAssignmentFailedEvent>())
+        .Build();
+});
+// Add SignalR
+builder.Services.AddSignalR()
+    .AddStackExchangeRedis(options => {
+        options.Configuration = StackExchange.Redis.ConfigurationOptions.Parse(
+                   builder.Configuration["Redis:ConnectionString"]
+                   );
+        options.Configuration.ChannelPrefix = "TrackingHub";
+    });
+// Configure WebSocket options
+builder.Services.Configure<HubOptions>(options => {
+    options.MaximumReceiveMessageSize = 1024 * 1024; // 1MB
+});
 builder.Services.AddCors(options => {
     options.AddPolicy("AllowAll", policy => {
         policy.AllowAnyOrigin()
@@ -114,6 +143,8 @@ if (app.Environment.IsDevelopment())
     //app.UseHttpsRedirection();
 
 }
+app.MapHub<TrackingHub>("/tracking");
+
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseCors("AllowAll");
 app.UseRouting();

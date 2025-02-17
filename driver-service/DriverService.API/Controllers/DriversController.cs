@@ -17,11 +17,13 @@ public class DriversController : ControllerBase
     private readonly IMediator _mediator;
     private readonly IMongoDbService _mongoDbService;
     private readonly ILogger<DriversController> _logger;
-    public DriversController(IMediator mediator, IMongoDbService mongoDbService, ILogger<DriversController> logger)
+    private readonly RedisCacheService _redisCacheService;
+    public DriversController(IMediator mediator, IMongoDbService mongoDbService, ILogger<DriversController> logger, RedisCacheService redisCacheService)
     {
         _mediator = mediator;
         _mongoDbService = mongoDbService;
         _logger = logger;
+        _redisCacheService = redisCacheService;
     }
 
     [HttpGet("{id}")]
@@ -56,6 +58,16 @@ public class DriversController : ControllerBase
     [HttpGet("{id}/location")]
     public async Task<IActionResult> GetDriverLocation(Guid id)
     {
+        // Check cache first
+        var cachedLocation = await _redisCacheService.GetCachedLocationAsync(id);
+        if (cachedLocation.HasValue)
+        {
+            return Ok(new DriverLocationResponse(
+                id,
+                cachedLocation.Value.lat,
+                cachedLocation.Value.lon,
+                DateTime.UtcNow));
+        }
         var result = await _mediator.Send(new GetDriverLocationQuery(id));
         return Ok(result);
     }
@@ -88,4 +100,46 @@ public class DriversController : ControllerBase
             return BadRequest("An error has occured while getting location history");
         }
     }
+
+    /// <summary>
+    /// Assign a driver based on latitude and longitude.
+    /// </summary>
+    /// <param name="command">Contains the latitude and longitude.</param>
+    /// <returns>The assigned driver ID.</returns>
+    [HttpPost("assign")]
+    public async Task<IActionResult> AssignDriver([FromBody] AssignDriverCommand command)
+    {
+        try
+        {
+            Guid driverId = await _mediator.Send(command);
+            return Ok(driverId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to assign driver");
+            return BadRequest("No available drivers!");
+        }
+    }
+
+    /// <summary>
+    /// Find the nearest driver.
+    /// </summary>
+    /// <param name="lat">Latitude</param>
+    /// <param name="lon">Longitude</param>
+    /// <returns>The nearest driver ID.</returns>
+    [HttpGet("nearest")]
+    public async Task<IActionResult> FindNearestDriver([FromQuery] double lat, [FromQuery] double lon)
+    {
+        try
+        {
+            Guid driverId = await _mediator.Send(new FindNearestDriverQuery(lat, lon));
+            return Ok(driverId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to find any drivers");
+            return BadRequest("Failed to find any drivers");
+        }
+    }
+
 }

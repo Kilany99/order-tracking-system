@@ -17,17 +17,19 @@ public class UpdateDriverLocationCommandHandler
     private readonly IKafkaProducerService _kafkaService;
     private readonly MongoDbContext _mongoContext;
     private readonly ILogger<UpdateDriverLocationCommandHandler> _logger;
-
+    private readonly RedisCacheService _redisCacheService;
     public UpdateDriverLocationCommandHandler(
         IDriverRepository repository,
         IKafkaProducerService kafkaService,
         MongoDbContext mongoContext,
-        ILogger<UpdateDriverLocationCommandHandler> logger)
+        ILogger<UpdateDriverLocationCommandHandler> logger,
+        RedisCacheService redisCacheService)
     {
         _repository = repository;
         _kafkaService = kafkaService;
         _mongoContext = mongoContext;
         _logger = logger;
+        _redisCacheService = redisCacheService;
     }
 
     public async Task<Unit> Handle(
@@ -51,6 +53,15 @@ public class UpdateDriverLocationCommandHandler
                 request.DriverId,
                 request.Latitude,
                 request.Longitude);
+
+            // Update Redis cache
+            _logger.LogInformation("caching location ...");
+
+            await _redisCacheService.CacheDriverLocationAsync(
+                request.DriverId,
+                request.Latitude,
+                request.Longitude);
+
             // Store in MongoDB
             _logger.LogInformation("saving location history in mongo db...");
 

@@ -17,5 +17,4 @@ namespace DriverService.Domain.Interfaces;
     Task<DriverAuth> GetAuthByEmailAsync(string email);
 
 
-
 }

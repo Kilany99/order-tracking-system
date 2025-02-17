@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DriverService.Infrastructure.Migrations
 {
     [DbContext(typeof(DriverDbContext))]
-    [Migration("20250215211827_InitialSchema")]
+    [Migration("20250217212124_InitialSchema")]
     partial class InitialSchema
     {
         /// <inheritdoc />
@@ -36,6 +36,9 @@ namespace DriverService.Infrastructure.Migrations
 
                     b.Property<double>("CurrentLongitude")
                         .HasColumnType("double precision");
+
+                    b.Property<Guid?>("CurrentOrderId")
+                        .HasColumnType("uuid");
 
                     b.Property<bool>("IsAvailable")
                         .HasColumnType("boolean");

@@ -12,8 +12,8 @@ using OrderService.Infrastructure.Data;
 namespace OrderService.Infrastructure.Migrations
 {
     [DbContext(typeof(OrderDbContext))]
-    [Migration("20250212213908_AddIdentityTables")]
-    partial class AddIdentityTables
+    [Migration("20250217212813_InitialSchema")]
+    partial class InitialSchema
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -231,6 +231,9 @@ namespace OrderService.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("AssignedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("CustomerId")
                         .IsRequired()
                         .HasColumnType("text");
@@ -245,6 +248,9 @@ namespace OrderService.Infrastructure.Migrations
 
                     b.Property<double>("DeliveryLongitude")
                         .HasColumnType("double precision");
+
+                    b.Property<Guid?>("DriverId")
+                        .HasColumnType("uuid");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");

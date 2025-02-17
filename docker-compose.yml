@@ -77,7 +77,15 @@ services:
       - "27017:27017"
     volumes:
       - mongodb-data:/data/db
+    
+  redis:
+    image: redis:7.0
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
 
 volumes:
   postgres-data:
   mongodb-data:
+  redis-data:  

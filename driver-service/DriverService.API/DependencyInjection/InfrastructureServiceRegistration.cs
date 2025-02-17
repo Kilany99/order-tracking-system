@@ -11,6 +11,7 @@ using DriverService.Core.Features.Driver.Hnadlers;
 using DriverService.Core.Features.Driver.Queries;
 using DriverService.Core.QueryHandlers;
 using DriverService.Core.Features.Driver.Handlers;
+using DriverService.Infrastructure.Services;
 namespace DriverService.API.DependencyInjection
 {
     public static class InfrastructureServiceRegistration
@@ -24,7 +25,7 @@ namespace DriverService.API.DependencyInjection
                 var config = sp.GetRequiredService<IConfiguration>();
                 return new MongoDbContext(config);
             });
-
+            services.AddScoped<IDriverAssignmentService, DriverAssignmentService>();
             services.AddScoped<IDriverRepository, DriverRepository>();
             return services;
         }
@@ -43,6 +44,9 @@ namespace DriverService.API.DependencyInjection
             services.AddScoped<IRequestHandler<GetDriverByIdQuery, DriverResponse>, GetDriverByIdQueryHandler>();
             services.AddScoped<IRequestHandler<DeleteDriverCommand, bool>, DeleteDriverCommandHandler>();
             services.AddScoped<IRequestHandler<GetDriverLocationQuery, DriverLocationResponse>, GetDriverLocationQueryHandler>();
+
+            services.AddScoped<IRequestHandler<AssignDriverCommand, Guid>, AssignDriverCommandHandler>();
+            services.AddScoped<IRequestHandler<FindNearestDriverQuery, Guid>, FindNearestDriverQueryHandler>();
 
             return services;
         }

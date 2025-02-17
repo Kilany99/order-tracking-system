@@ -4,10 +4,13 @@ namespace OrderService.Domain.Entities;
 public class Order : Entity<Guid>
 {
     public string? CustomerId { get; private set; }
+    public Guid? DriverId { get; set; }
+
     public string? DeliveryAddress { get; private set; }
     public OrderStatus Status { get; private set; }
     public double DeliveryLatitude { get; set; }
     public double DeliveryLongitude { get; set; }
+    public DateTime? AssignedAt { get; set; }
 
     // Factory method for controlled creation
     public static Order Create(

@@ -1,4 +1,7 @@
 ﻿﻿using Confluent.Kafka;
+using Microsoft.AspNetCore.SignalR;
+using OrderService.API.Clients;
+using OrderService.API.Hubs;
 using OrderService.API.Models;
 using OrderService.API.Serialization;
 using OrderService.Infrastructure.Repositories;
@@ -6,22 +9,28 @@ using System.Text.Json;
 
 namespace OrderService.API.Consumers;
 
-public class DriverLocationConsumer : IHostedService
+public class DriverLocationConsumer : BackgroundService
 {
     private readonly IConsumer<string, DriverLocationEvent> _consumer;
     private readonly ILogger<DriverLocationConsumer> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IConfiguration _configuration;
-    public DriverLocationConsumer(ILogger<DriverLocationConsumer> logger, IServiceScopeFactory scopeFactory,IConfiguration configuration)
+
+    public DriverLocationConsumer(
+        ILogger<DriverLocationConsumer> logger,
+        IServiceScopeFactory scopeFactory,
+        IConfiguration configuration)
     {
         _logger = logger;
         _scopeFactory = scopeFactory;
         _configuration = configuration;
+
         var config = new ConsumerConfig
         {
-            BootstrapServers = _configuration["kafka:BootstrapServers"],
+            BootstrapServers = configuration["Kafka:BootstrapServers"],
             GroupId = "order-service",
-            AutoOffsetReset = AutoOffsetReset.Earliest
+            AutoOffsetReset = AutoOffsetReset.Earliest,
+            EnableAutoCommit = false
         };
 
         _consumer = new ConsumerBuilder<string, DriverLocationEvent>(config)
@@ -29,57 +38,80 @@ public class DriverLocationConsumer : IHostedService
             .Build();
     }
 
-    public Task StartAsync(CancellationToken cancellationToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _consumer.Subscribe(_configuration["kafka:Topic"]);
+        _consumer.Subscribe(_configuration["Kafka:Topic"]);
 
-        Task.Run(async () => 
+        while (!stoppingToken.IsCancellationRequested)
         {
-            while (!cancellationToken.IsCancellationRequested)
+            try
             {
-                try
-                {
-                    var result = _consumer.Consume(cancellationToken);
-                    var location = result.Message.Value;
-
-                    _logger.LogInformation(
-                        "Received driver location: DriverId={DriverId}, Lat={Lat}, Lng={Lng}",
-                        location.DriverId,
-                        location.Latitude,
-                        location.Longitude
-                    );
-                    using (var scope = _scopeFactory.CreateScope())  // ✅ Create a scope
-                    {
-                        var orderRepository = scope.ServiceProvider.GetRequiredService<IOrderRepository>();  // Resolve scoped service
-
-
-                        var orders = await orderRepository.GetOrdersNearLocationAsync(
-                        location.Latitude,
-                        location.Longitude,
-                        1000 // 1km radius
-                    );
-
-                        foreach (var order in orders)
-                        {
-                            order.MarkAsOutForDelivery();
-                            await orderRepository.UpdateAsync(order);
-                            _logger.LogInformation("Order {OrderId} is out for delivery", order.Id);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error consuming Kafka message");
-                }
+                var result = _consumer.Consume(stoppingToken);
+                await ProcessLocationUpdate(result.Message.Value);
+                _consumer.Commit(result);
             }
-        }, cancellationToken);
-
-        return Task.CompletedTask;
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing location update");
+                await Task.Delay(1000, stoppingToken);
+            }
+        }
     }
 
-    public Task StopAsync(CancellationToken cancellationToken)
+    private async Task ProcessLocationUpdate(DriverLocationEvent location)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var services = scope.ServiceProvider;
+
+        var orderRepository = services.GetRequiredService<IOrderRepository>();
+        var hubContext = services.GetRequiredService<IHubContext<TrackingHub>>();
+        var driverClient = services.GetRequiredService<IDriverClient>();
+
+        try
+        {
+            // Update driver position in Driver Service
+            await driverClient.AssignDriverAsync(
+                location.Latitude,
+                location.Longitude);
+
+            // Get nearby pending orders
+            var orders = await orderRepository.GetOrdersNearLocationAsync(
+                location.Latitude,
+                location.Longitude,
+                1000);
+
+            foreach (var order in orders)
+            {
+                if (await orderRepository.TryAssignDriver(order.Id, location.DriverId))
+                {
+                    _logger.LogInformation("Assigned order {OrderId} to driver {DriverId}",
+                        order.Id, location.DriverId);
+
+                    // Notify clients
+                    await hubContext.Clients
+                        .Group(order.Id.ToString())
+                        .SendAsync("OrderAssigned", new
+                        {
+                            orderId = order.Id,
+                            driverId = location.DriverId,
+                            position = new
+                            {
+                                lat = location.Latitude,
+                                lng = location.Longitude
+                            }
+                        });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing location for driver {DriverId}",
+                location.DriverId);
+        }
+    }
+    public override void Dispose()
     {
         _consumer.Close();
-        return Task.CompletedTask;
+        base.Dispose();
     }
 }

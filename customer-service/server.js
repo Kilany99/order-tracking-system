@@ -10,8 +10,15 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.get('/auth', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'auth.html'));
+app.get('/auth/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', '/auth/login.html'));
+});
+app.get('/auth/register', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', '/auth/register.html'));
+});
+
+app.get('/order/order-track', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', '/order/order-track.html'));
 });
 
 app.listen(3000, () => {

@@ -35,7 +35,7 @@ class AuthService {
           contentType: 'application/json',
           data: JSON.stringify({ fullName, email, password })
         });
-        shomMessage('Registration successful! Please login.'); 
+        showMessage('Registration successful! Please login.'); 
       } catch (error) {
         let errorMessage = '';
         if (error.responseJSON && Array.isArray(error.responseJSON)) {
@@ -51,7 +51,7 @@ class AuthService {
   }
   
   // Initialize AuthService .
-  const authService = new AuthService('https://192.168.43.144:45455');
+  const authService = new AuthService('http://localhost:5000');
   
   // Form Submissions
   $('#loginForm').submit(async (e) => {
@@ -75,7 +75,7 @@ class AuthService {
   function showError(message) {
     $('#errorMessage').text(message).fadeIn().delay(6000).fadeOut();
   }
-  function shomMessage(message){
+  function showMessage(message){
     $('#successMessage').text(message).fadeIn().delay(6000).fadeOut();
 
   }

@@ -34,6 +34,9 @@ namespace DriverService.Infrastructure.Migrations
                     b.Property<double>("CurrentLongitude")
                         .HasColumnType("double precision");
 
+                    b.Property<Guid?>("CurrentOrderId")
+                        .HasColumnType("uuid");
+
                     b.Property<bool>("IsAvailable")
                         .HasColumnType("boolean");
 

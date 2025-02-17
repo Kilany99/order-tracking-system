@@ -14,6 +14,7 @@ public interface IOrderRepository
     Task UpdateAsync(Order order);
     Task DeleteAsync(Order order);
     Task<List<Order>> GetOrdersNearLocationAsync(double latitude,double longitude, double radiusInMeters);
+    Task<bool> TryAssignDriver(Guid orderId, Guid driverId);
 
 
 }
@@ -59,6 +60,32 @@ public class OrderRepository : IOrderRepository
                 latitude, longitude,
                 o.DeliveryLatitude, o.DeliveryLongitude) <= radiusInMeters)
             .ToList();
+    }
+    public async Task<bool> TryAssignDriver(Guid orderId, Guid driverId)
+    {
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+
+        try
+        {
+            var order = await _context.Orders
+                .FirstOrDefaultAsync(o => o.Id == orderId && o.Status == OrderStatus.Created);
+
+            if (order == null) return false;
+
+            order.DriverId = driverId;
+            order.UpdateStatus(OrderStatus.Preparing);
+            order.AssignedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return true;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            return false;
+        }
     }
 
 }

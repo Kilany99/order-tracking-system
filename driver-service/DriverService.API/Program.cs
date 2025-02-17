@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Serilog;
+using StackExchange.Redis;
 using System.Reflection;
 using System.Text;
 
@@ -16,12 +17,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-//builder.WebHost.ConfigureKestrel(options =>
-//{
-//    options.ListenAnyIP(8080);
-//    options.ListenAnyIP(80);
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(8080);
+    options.ListenAnyIP(80);
 
-//});
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddApplication();  // Extension method to register MediatR, FluentValidation
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -80,7 +81,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddScoped<IJwtService, JwtService>();
-
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+{
+    var configuration = builder.Configuration.GetConnectionString("Redis");
+    return ConnectionMultiplexer.Connect(configuration);
+});
+builder.Services.AddSingleton<RedisCacheService>();
 builder.Services.AddCors(options => {
     options.AddPolicy("AllowAll", policy => {
         policy.AllowAnyOrigin()
@@ -102,7 +108,7 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-    app.UseHttpsRedirection();
+    //app.UseHttpsRedirection();
 
 }
 app.UseMiddleware<ExceptionHandlingMiddleware>();

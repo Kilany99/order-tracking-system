@@ -7,11 +7,23 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace OrderService.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class AddIdentityTables : Migration
+    public partial class InitialSchema : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AddColumn<DateTime>(
+                name: "AssignedAt",
+                table: "Orders",
+                type: "timestamp with time zone",
+                nullable: true);
+
+            migrationBuilder.AddColumn<Guid>(
+                name: "DriverId",
+                table: "Orders",
+                type: "uuid",
+                nullable: true);
+
             migrationBuilder.CreateTable(
                 name: "AspNetRoles",
                 columns: table => new
@@ -219,6 +231,14 @@ namespace OrderService.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "AspNetUsers");
+
+            migrationBuilder.DropColumn(
+                name: "AssignedAt",
+                table: "Orders");
+
+            migrationBuilder.DropColumn(
+                name: "DriverId",
+                table: "Orders");
         }
     }
 }

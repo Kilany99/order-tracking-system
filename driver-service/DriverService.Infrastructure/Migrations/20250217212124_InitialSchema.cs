@@ -16,6 +16,7 @@ namespace DriverService.Infrastructure.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    CurrentOrderId = table.Column<Guid>(type: "uuid", nullable: true),
                     Name = table.Column<string>(type: "text", nullable: false),
                     VehicleType = table.Column<string>(type: "text", nullable: false),
                     IsAvailable = table.Column<bool>(type: "boolean", nullable: false),

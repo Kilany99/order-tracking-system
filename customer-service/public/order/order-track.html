@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Delivery Tracking</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="../css/style.css">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="./js/order.js" defer></script>
+</head>
+<body>
+  <div class="container">
+    <h1>Orders Tracking</h1>
+    
+    <!-- Order Tracking Section -->
+    <div id="orderSection" style="display: none;">
+      <h2>Track Your Order</h2>
+      <div class="form-group">
+        <input type="text" id="orderId" placeholder="Enter Order ID">
+        <button id="trackOrderBtn" class="btn">Track Order</button>
+      </div>
+      
+      <!-- Order Status Display -->
+      <div id="orderStatus" class="order-status"></div>
+      
+      <!-- Notifications -->
+      <div id="errorMessage" class="error-message" style="display: none;"></div>
+      <div id="successMessage" class="success-message" style="display: none;"></div>
+    </div>
+
+    <!-- Map Container -->
+     <h3>Driver Location:</h3>
+    <div id="map" style="height: 500px; margin-top: 20px;"></div>
+  </div>
+
+  <script>
+    $(document).ready(function () {
+      // Initialize map first
+      const map = L.map('map').setView([0, 0], 13); // Default to 0,0
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+      // Initialize order UI
+      window.initializeOrderUI(window.orderServiceInstance, map);
+    });
+  </script>
+</body>
+</html>
