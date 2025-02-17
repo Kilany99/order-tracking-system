@@ -1,0 +1,24 @@
+
+services:
+  order-api:
+    build: ./order-service
+    ports:
+      - "5000:80"
+    environment:
+      ConnectionStrings__Postgres: "Host=postgres;Database=delivery;Username=postgres;Password=1999King"
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1999King
+      POSTGRES_DB: delivery
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  postgres-data:
