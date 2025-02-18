@@ -26,7 +26,7 @@ public class Order : Entity<Guid>
             DeliveryAddress = deliveryAddress,
             DeliveryLatitude = deliveryLatitude,
             DeliveryLongitude = deliveryLongitude,
-            Status = OrderStatus.Created
+            Status = OrderStatus.Created,
         };
     }
     public void UpdateStatus(OrderStatus status) =>

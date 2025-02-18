@@ -59,6 +59,8 @@ public class DriversController : ControllerBase
     public async Task<IActionResult> GetDriverLocation(Guid id)
     {
         // Check cache first
+        _logger.LogInformation("Checking cache for saved location...");
+
         var cachedLocation = await _redisCacheService.GetCachedLocationAsync(id);
         if (cachedLocation.HasValue)
         {
@@ -68,6 +70,8 @@ public class DriversController : ControllerBase
                 cachedLocation.Value.lon,
                 DateTime.UtcNow));
         }
+        _logger.LogInformation("No location info found in cache for this driver, getting location from DB...");
+
         var result = await _mediator.Send(new GetDriverLocationQuery(id));
         return Ok(result);
     }
@@ -111,6 +115,7 @@ public class DriversController : ControllerBase
     {
         try
         {
+            _logger.LogInformation("Assigning driver started...");
             Guid driverId = await _mediator.Send(command);
             return Ok(driverId);
         }

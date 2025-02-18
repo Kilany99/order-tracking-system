@@ -20,7 +20,9 @@ app.get('/auth/register', (req, res) => {
 app.get('/order/order-track', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', '/order/order-track.html'));
 });
-
-app.listen(3000, () => {
+app.get('/order/new-order-form', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', '/order/new-order-form.html'));
+});
+app.listen(3000, '0.0.0.0', () => {
   console.log('Frontend running on http://localhost:3000');
 });

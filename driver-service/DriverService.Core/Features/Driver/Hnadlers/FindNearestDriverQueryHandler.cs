@@ -1,21 +1,32 @@
 ﻿using DriverService.Core.Features.Driver.Queries;
+using DriverService.Domain.Exceptions;
 using DriverService.Domain.Interfaces;
 using DriverService.Infrastructure.Repositories;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace DriverService.Core.Features.Driver.Hnadlers;
 
 public class FindNearestDriverQueryHandler : IRequestHandler<FindNearestDriverQuery, Guid>
 {
-    private readonly IDriverAssignmentService _driverAssignmentService;
+    private readonly IDriverRepository _driverRepository;
+    private readonly ILogger<FindNearestDriverQueryHandler> _logger;
 
-    public FindNearestDriverQueryHandler(IDriverAssignmentService driverAssignmentService)
+    public FindNearestDriverQueryHandler(IDriverRepository driverRepository, ILogger<FindNearestDriverQueryHandler> logger)
     {
-        _driverAssignmentService = driverAssignmentService;
+        _driverRepository = driverRepository;
+        _logger = logger;
         
     }
 
-    public async Task<Guid> Handle(FindNearestDriverQuery request, CancellationToken cancellationToken)=>
-          await _driverAssignmentService.FindNearestDriver(request.Latitude, request.Longitude);
+    public async Task<Guid> Handle(FindNearestDriverQuery request, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation($"Trying to find nearest driver for the given coordenates: Long {request.Longitude} , Lat {request.Latitude} ");
+        var driver = await _driverRepository.FindNearestDriverAsync(
+               request.Latitude,
+               request.Longitude) ?? throw new DriverNotFoundException("No Drivers Found!");
+        return driver.Id;
+
+    }
     
 }

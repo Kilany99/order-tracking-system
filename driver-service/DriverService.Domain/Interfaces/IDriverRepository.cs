@@ -15,6 +15,8 @@ namespace DriverService.Domain.Interfaces;
     Task SaveRefreshTokenAsync(Guid driverId, string token, DateTime expires);
     Task<RefreshToken> GetRefreshTokenAsync(string token);
     Task<DriverAuth> GetAuthByEmailAsync(string email);
+    Task<Driver?> FindNearestDriverAsync(double latitude, double longitude);
+    Task<Driver> AssignDriverAsync(Guid driverId, Guid orderId);
 
 
 }

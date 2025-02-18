@@ -73,6 +73,7 @@ public class UpdateDriverLocationCommandHandler
                 Timestamp = DateTime.UtcNow
             });
 
+            _logger.LogInformation("Update command finished successfully.");
 
             return Unit.Value;
         }

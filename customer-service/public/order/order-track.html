@@ -10,9 +10,29 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="./js/order.js" defer></script>
+  <style>
+    #map-container {
+  margin: 20px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+#map {
+  height: 500px;
+  width: 100%;
+  background: #f8f9fa; /* Fallback color */
+}
+
+/* Ensure map tiles load properly */
+.leaflet-tile {
+  filter: hue-rotate(45deg) saturate(1.2); 
+}
+  </style>
 </head>
 <body>
   <div class="container">
+
     <h1>Orders Tracking</h1>
     
     <!-- Order Tracking Section -->
@@ -32,19 +52,41 @@
     </div>
 
     <!-- Map Container -->
-     <h3>Driver Location:</h3>
-    <div id="map" style="height: 500px; margin-top: 20px;"></div>
-  </div>
-
+    <div id="map-container">
+      <h3>Driver Location:</h3>
+      <div id="map"></div>
+    </div>
   <script>
-    $(document).ready(function () {
-      // Initialize map first
-      const map = L.map('map').setView([0, 0], 13); // Default to 0,0
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+   $(document).ready(function () {
+  // Initialize map 
+  const map = L.map('map', {
+    center: [37.7749, -122.4194], // San Francisco coordinates
+    zoom: 13,
+    zoomControl: false 
+  });
 
-      // Initialize order UI
-      window.initializeOrderUI(window.orderServiceInstance, map);
-    });
+  // tile layer with error handling
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    detectRetina: true
+  }).on('tileerror', function(err) {
+    console.error('Map tile error:', err);
+  }).addTo(map);
+
+  // Add custom zoom controls
+  L.control.zoom({
+    position: 'topright'
+  }).addTo(map);
+
+  // Initialize order UI
+  window.initializeOrderUI(window.orderServiceInstance, map);
+});
+    
+
+    $(function() {
+        $("#navbar-placeholder").load("../navbar/navbar.html");
+      });
+
   </script>
 </body>
 </html>

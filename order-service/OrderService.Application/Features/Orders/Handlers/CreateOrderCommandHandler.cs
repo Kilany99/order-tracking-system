@@ -31,6 +31,7 @@ namespace OrderService.Application.Features.Orders.Handlers
                     request.DeliveryLatitude,
                     request.DeliveryLongitude);
             await _repo.AddAsync(order);
+            _logger.LogInformation($"Order created successfully for  {request.CustomerId} of orderID: {order.Id} ");
 
             return new ApiResponse<Guid>(order.Id, "Order created successfully");
         }

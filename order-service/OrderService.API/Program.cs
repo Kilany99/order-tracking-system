@@ -17,14 +17,15 @@ using OrderService.Infrastructure.Data;
 using Serilog;
 using System.Reflection;
 using System.Text;
-using System.Text.Json; 
+using System.Text.Json;
+using Microsoft.AspNetCore.SignalR.StackExchangeRedis;
 
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
-// Add services to the container.
+//Add services to the container.
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.ListenAnyIP(5000);
@@ -81,13 +82,13 @@ builder.Services.AddSingleton<IProducer<string, OrderAssignmentFailedEvent>>(sp 
         .Build();
 });
 // Add SignalR
+
 builder.Services.AddSignalR()
-    .AddStackExchangeRedis(options => {
-        options.Configuration = StackExchange.Redis.ConfigurationOptions.Parse(
-                   builder.Configuration["Redis:ConnectionString"]
-                   );
+    .AddStackExchangeRedis(builder.Configuration["Redis:ConnectionString"] + ",abortConnect=false", options =>
+    {
         options.Configuration.ChannelPrefix = "TrackingHub";
     });
+
 // Configure WebSocket options
 builder.Services.Configure<HubOptions>(options => {
     options.MaximumReceiveMessageSize = 1024 * 1024; // 1MB
@@ -97,6 +98,18 @@ builder.Services.AddCors(options => {
         policy.AllowAnyOrigin()
               .AllowAnyMethod()
               .AllowAnyHeader();
+
+    });
+});
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowCustomerApp", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
@@ -143,13 +156,15 @@ if (app.Environment.IsDevelopment())
     //app.UseHttpsRedirection();
 
 }
-app.MapHub<TrackingHub>("/tracking");
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
-app.UseCors("AllowAll");
+//app.UseCors("AllowAll");
+app.UseCors("AllowCustomerApp");
+
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapHub<TrackingHub>("/tracking");
 
 app.MapControllers(); 
 

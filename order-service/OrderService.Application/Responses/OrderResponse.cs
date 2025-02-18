@@ -25,5 +25,6 @@ public class OrderResponse
         DeliveryLatitude = latitude;
         DeliveryLongitude = longitude;
         Status = orderStatus;
+
     }
 }

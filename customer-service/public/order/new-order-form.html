@@ -4,12 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Place A New Order</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="/css/style.css">
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="./js/order.js" defer></script>
 </head>
 <body>
   <div class="container">
+
     <!-- Order Form -->
     <h2>Place Order</h2>
     <form id="orderForm">
@@ -41,6 +42,11 @@
     $(document).ready(function () {
       window.initializeOrderUI(window.orderServiceInstance);
     });
+  
+      $(function() {
+        $("#navbar-placeholder").load("../navbar/navbar.html");
+      });
+
   </script>
 </body>
 </html>

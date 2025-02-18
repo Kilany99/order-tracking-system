@@ -1,0 +1,12 @@
+   /* Navigation */
+   header {
+    background: linear-gradient(135deg, #007bff, #00c6ff);
+    color: white;
+  }
+  .nav-link {
+    transition: background-color 0.3s, transform 0.3s;
+  }
+  .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+  }

@@ -10,12 +10,20 @@ services:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    networks:
+      - my-network  
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      retries: 5
+      timeout: 5s
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
-
+    networks:
+      - my-network  
   kafka:
     image: confluentinc/cp-kafka:7.4.0
     healthcheck:
@@ -27,9 +35,11 @@ services:
       - zookeeper
     environment:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      - my-network  
     ports:
       - "9092:9092"
       - "29092:29092"
@@ -41,13 +51,18 @@ services:
     ports:
       - "5000:50"
     depends_on:
-      - postgres
-
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - my-network  
+    
     environment:
       ConnectionStrings__Postgres: "Host=postgres;Database=delivery;Username=postgres;Password=1999King"
       Kafka__BootstrapServers: "kafka:9092"
 
-
+    
   driver-service:
     build:
       context: ./driver-service
@@ -55,18 +70,30 @@ services:
     ports:
       - "8080:80"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongodb:  
+        condition: service_healthy
+    networks:
+      - my-network  
+
+
     environment:
       ConnectionStrings__Postgres: "Host=postgres;Database=driver;Username=postgres;Password=1999King"
-      Kafka__BootstrapServers: "localhost:9092"
+      Kafka__BootstrapServers: "kafka:9092"
+      ConnectionStrings__MongoDb: "mongodb://root:1999King@mongodb:27017/driver_db?authSource=admin"  
 
 
   customer-service:
     build:
       context: ./customer-service
       dockerfile: Dockerfile
+    networks:
+      - my-network  
     ports:
-      - "8000:80"
+      - "8000:3000"
 
   mongodb:
     image: mongo:6.0
@@ -75,8 +102,16 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: 1999King
     ports:
       - "27017:27017"
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh --quiet localhost:27017/admin -u root -p 1999King --authenticationDatabase admin || exit 1
+      interval: 5s
+      timeout: 30s
+      retries: 5
+    networks:
+      - my-network
     volumes:
       - mongodb-data:/data/db
+
     
   redis:
     image: redis:7.0
@@ -84,8 +119,20 @@ services:
       - "6379:6379"
     volumes:
       - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 3
+      timeout: 5s
+    networks:
+      - my-network  
+networks:
+  my-network:  
+    driver: bridge
+
 
 volumes:
   postgres-data:
   mongodb-data:
   redis-data:  
+ 
