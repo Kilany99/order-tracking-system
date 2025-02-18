@@ -19,6 +19,8 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.SignalR.StackExchangeRedis;
+using OrderService.Infrastructure.Services;
+using StackExchange.Redis;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -93,6 +95,12 @@ builder.Services.AddSignalR()
 builder.Services.Configure<HubOptions>(options => {
     options.MaximumReceiveMessageSize = 1024 * 1024; // 1MB
 });
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+{
+    var configuration = builder.Configuration.GetConnectionString("Redis");
+    return ConnectionMultiplexer.Connect(configuration);
+});
+builder.Services.AddSingleton<RedisCacheService>();
 builder.Services.AddCors(options => {
     options.AddPolicy("AllowAll", policy => {
         policy.AllowAnyOrigin()
@@ -101,6 +109,7 @@ builder.Services.AddCors(options => {
 
     });
 });
+
 
 builder.Services.AddCors(options =>
 {

@@ -1,4 +1,7 @@
-﻿namespace OrderService.API.Clients
+﻿using OrderService.Domain.Entities;
+using OrderService.Infrastructure.Services;
+
+namespace OrderService.API.Clients
 {
     public interface IDriverClient
     {
@@ -11,13 +14,16 @@
     {
         private readonly HttpClient _httpClient;
         private readonly ILogger<HttpDriverClient> _logger;
+        private readonly RedisCacheService _cacheService;
 
         public HttpDriverClient(
             HttpClient httpClient,
-            ILogger<HttpDriverClient> logger)
+            ILogger<HttpDriverClient> logger,
+            RedisCacheService cacheService)
         {
             _httpClient = httpClient;
             _logger = logger;
+            _cacheService = cacheService;
         }
 
         public async Task<Guid> AssignDriverAsync(double latitude, double longitude)
@@ -57,6 +63,7 @@
 
             }
         }
+
     }
 
 }

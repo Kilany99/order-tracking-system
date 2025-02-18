@@ -19,4 +19,5 @@ namespace DriverService.Domain.Interfaces;
     Task<Driver> AssignDriverAsync(Guid driverId, Guid orderId);
 
 
+
 }

@@ -82,7 +82,23 @@ public class DriverLocationConsumer : IHostedService
 
         try
         {
-            // Update driver position in Driver Service
+            // 1. Get all orders assigned to this driver
+            var assignedOrders = await orderRepository.GetOrdersByDriver(location.DriverId);
+
+            // 2. Broadcast to connected clients
+            foreach (var order in assignedOrders)
+            {
+                await hubContext.Clients.Group(order.Id.ToString())
+                    .SendAsync("DriverLocationUpdate", new
+                    {
+                        orderId = order.Id,
+                        driverId = location.DriverId,
+                        lat = location.Latitude,
+                        lng = location.Longitude
+                    });
+            }
+
+            // Update assigned order position to driver in Driver Service
             await driverClient.AssignDriverAsync(
                 location.Latitude,
                 location.Longitude);

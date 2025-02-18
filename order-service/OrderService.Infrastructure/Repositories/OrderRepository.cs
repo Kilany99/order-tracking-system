@@ -15,6 +15,8 @@ public interface IOrderRepository
     Task DeleteAsync(Order order);
     Task<List<Order>> GetOrdersNearLocationAsync(double latitude,double longitude, double radiusInMeters);
     Task<bool> TryAssignDriver(Guid orderId, Guid driverId);
+    Task<List<Order>> GetOrdersByDriver(Guid driverId);
+
 
 
 }
@@ -86,6 +88,12 @@ public class OrderRepository : IOrderRepository
             await transaction.RollbackAsync();
             return false;
         }
+    }
+    public async Task<List<Order>> GetOrdersByDriver(Guid driverId)
+    {
+        return await _context.Orders
+            .Where(o => o.DriverId == driverId && o.Status != OrderStatus.Delivered)
+            .ToListAsync();
     }
 
 }

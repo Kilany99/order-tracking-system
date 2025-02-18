@@ -3,90 +3,68 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Delivery Tracking</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="../css/style.css">
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="./js/order.js" defer></script>
+  <title>Order Tracking</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="../css/style.css"/>
   <style>
     #map-container {
-  margin: 20px 0;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-
-#map {
-  height: 500px;
-  width: 100%;
-  background: #f8f9fa; /* Fallback color */
-}
-
-/* Ensure map tiles load properly */
-.leaflet-tile {
-  filter: hue-rotate(45deg) saturate(1.2); 
-}
+      margin: 20px 0;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    #map {
+      height: 500px;
+      width: 100%;
+      background: #f8f9fa;
+    }
+    .status-card {
+      padding: 20px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .error-message, .success-message {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      display: none;
+    }
+    .error-message { background: #f8d7da; color: #721c24; }
+    .success-message { background: #d4edda; color: #155724; }
   </style>
 </head>
 <body>
   <div class="container">
-
-    <h1>Orders Tracking</h1>
+    <h1>Order Tracking</h1>
     
-    <!-- Order Tracking Section -->
     <div id="orderSection" style="display: none;">
       <h2>Track Your Order</h2>
-      <div class="form-group">
+      <form id="orderForm">
+        <!-- Order form fields -->
+      </form>
+      
+      <div class="tracking-controls">
         <input type="text" id="orderId" placeholder="Enter Order ID">
         <button id="trackOrderBtn" class="btn">Track Order</button>
       </div>
       
-      <!-- Order Status Display -->
-      <div id="orderStatus" class="order-status"></div>
-      
-      <!-- Notifications -->
-      <div id="errorMessage" class="error-message" style="display: none;"></div>
-      <div id="successMessage" class="success-message" style="display: none;"></div>
+      <div id="orderStatus" class="status-card"></div>
+      <div id="errorMessage" class="error-message"></div>
+      <div id="successMessage" class="success-message"></div>
     </div>
 
-    <!-- Map Container -->
     <div id="map-container">
-      <h3>Driver Location:</h3>
+      <h3 style="padding-left: 10px;">Delivery Tracking</h3>
       <div id="map"></div>
     </div>
-  <script>
-   $(document).ready(function () {
-  // Initialize map 
-  const map = L.map('map', {
-    center: [37.7749, -122.4194], // San Francisco coordinates
-    zoom: 13,
-    zoomControl: false 
-  });
+  </div>
 
-  // tile layer with error handling
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    detectRetina: true
-  }).on('tileerror', function(err) {
-    console.error('Map tile error:', err);
-  }).addTo(map);
-
-  // Add custom zoom controls
-  L.control.zoom({
-    position: 'topright'
-  }).addTo(map);
-
-  // Initialize order UI
-  window.initializeOrderUI(window.orderServiceInstance, map);
-});
-    
-
-    $(function() {
-        $("#navbar-placeholder").load("../navbar/navbar.html");
-      });
-
-  </script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script type="module" src="./js/lib/auth-serivce.js"></script>
+  <script type="module" src="./js/services/order-service.js"></script>
+  <script type="module" src="./js/order-tracking.js"></script>
 </body>
 </html>

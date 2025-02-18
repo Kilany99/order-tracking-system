@@ -4,49 +4,159 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Place A New Order</title>
-  <link rel="stylesheet" href="/css/style.css">
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="./js/order.js" defer></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .container {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    button {
+      padding: 10px 20px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    .success-message,
+    .error-message {
+      padding: 10px;
+      margin: 15px 0;
+      border-radius: 4px;
+      display: none;
+    }
+
+    .success-message {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .error-message {
+      background: #f8d7da;
+      color: #721c24;
+    }
+  </style>
 </head>
 <body>
   <div class="container">
-
-    <!-- Order Form -->
-    <h2>Place Order</h2>
+    <div id="navbar-placeholder"></div>
+    
+    <h2>Place New Order</h2>
     <form id="orderForm">
       <div class="form-group">
-        <label>Customer ID:</label>
+        <label for="customerId">Customer ID:</label>
         <input type="text" id="customerId" required>
       </div>
       <div class="form-group">
-        <label>Delivery Address:</label>
+        <label for="deliveryAddress">Delivery Address:</label>
         <input type="text" id="deliveryAddress" required>
       </div>
       <div class="form-group">
-        <label>Latitude:</label>
+        <label for="deliveryLatitude">Latitude:</label>
         <input type="number" id="deliveryLatitude" step="any" required>
       </div>
       <div class="form-group">
-        <label>Longitude:</label>
+        <label for="deliveryLongitude">Longitude:</label>
         <input type="number" id="deliveryLongitude" step="any" required>
       </div>
       <button type="submit">Place Order</button>
     </form>
-    <!--Error/sucess message dialogs-->
+
     <div id="successMessage" class="success-message"></div>
     <div id="errorMessage" class="error-message"></div>
+  </div>
 
-   
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <script>
-    $(document).ready(function () {
-      window.initializeOrderUI(window.orderServiceInstance);
-    });
-  
-      $(function() {
-        $("#navbar-placeholder").load("../navbar/navbar.html");
+  <script type="module">
+    import { OrderService } from './js/services/order-service.js';
+    import  authService  from '../order/js/lib/auth-serivce.js';
+
+    const orderService = new OrderService("http://localhost:5000");
+
+    $(document).ready(() => {
+      // Load navbar
+     // $("#navbar-placeholder").load("../navbar/navbar.html");
+
+      // Handle form submission
+      $('#orderForm').submit(async (e) => {
+        e.preventDefault();
+        
+        const orderData = {
+          customerId: $('#customerId').val(),
+          deliveryAddress: $('#deliveryAddress').val(),
+          deliveryLatitude: parseFloat($('#deliveryLatitude').val()),
+          deliveryLongitude: parseFloat($('#deliveryLongitude').val())
+        };
+
+        try {
+          const response = await orderService.placeOrder(orderData);
+          showMessage(`Order placed successfully! ID: ${response.id}`);
+          $('#orderForm')[0].reset();
+        } catch (error) {
+          showError(error.message);
+        }
       });
+    });
 
+    function showError(message) {
+      $('#errorMessage').text(message).fadeIn().delay(5000).fadeOut();
+    }
+
+    function showMessage(message) {
+      $('#successMessage').text(message).fadeIn().delay(5000).fadeOut();
+    }
   </script>
 </body>
 </html>
