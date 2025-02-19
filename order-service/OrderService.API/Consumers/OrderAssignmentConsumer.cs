@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Hosting;
 using OrderService.API.Clients;
 using OrderService.API.Models;
-using OrderService.API.Serialization;
+using OrderService.Infrastructure.Serialization;
 using System.Text.Json;
 
 namespace OrderService.API.Consumers;
@@ -12,21 +12,22 @@ public class OrderAssignmentConsumer : BackgroundService
     private readonly IConsumer<string, OrderCreatedEvent> _consumer;
     private readonly ILogger<OrderAssignmentConsumer> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IConfiguration _configuration;
 
     public OrderAssignmentConsumer(
         ILogger<OrderAssignmentConsumer> logger,
         IServiceScopeFactory scopeFactory,
-        IConfiguration config)
+        IConfiguration configuration)
     {
         _logger = logger;
         _scopeFactory = scopeFactory;
-
+        _configuration = configuration;
         var consumerConfig = new ConsumerConfig
         {
-            BootstrapServers = config["Kafka:BootstrapServers"],
-            GroupId = "order-service-assignment",
+            BootstrapServers = _configuration["Kafka:BootstrapServers"],
+            GroupId = "order-service",
             AutoOffsetReset = AutoOffsetReset.Earliest,
-            EnableAutoCommit = false
+            EnableAutoCommit = true
         };
 
         _consumer = new ConsumerBuilder<string, OrderCreatedEvent>(consumerConfig)
@@ -36,21 +37,35 @@ public class OrderAssignmentConsumer : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _consumer.Subscribe("orders-created");
+        _consumer.Subscribe(_configuration["Kafka:OrderCreated"]);
+        _logger.LogInformation("Assign driver consumer is running...");
 
-        while (!stoppingToken.IsCancellationRequested)
+        try
         {
-            try
+            while (!stoppingToken.IsCancellationRequested)
             {
-                var result = _consumer.Consume(stoppingToken);
-                await ProcessOrderAssignment(result.Message.Value, stoppingToken);
-                _consumer.Commit(result);
+                try
+                {
+                    var result = _consumer.Consume(stoppingToken);
+                    _logger.LogInformation("Received order assignment for OrderId={OrderId}", result.Message.Value.OrderId);
+
+                    await ProcessOrderAssignment(result.Message.Value, stoppingToken);
+                    _consumer.Commit(result);
+                }
+                catch (ConsumeException e)
+                {
+                    _logger.LogError(e, "Consume error");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error processing order assignment");
+                    await Task.Delay(1000, stoppingToken);
+                }
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing order assignment");
-                await Task.Delay(1000, stoppingToken);
-            }
+        }
+        finally
+        {
+            _consumer.Close();
         }
     }
 

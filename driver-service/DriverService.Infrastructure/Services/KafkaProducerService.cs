@@ -19,7 +19,9 @@ public  interface IKafkaProducerService
 public class KafkaProducerService : IKafkaProducerService, IDisposable
 {
     private readonly IProducer<string, string> _producer;
-    private readonly string _topic;
+    private readonly string _locationTopic;
+    private readonly string _driverAssignedTopic;
+    private readonly string _assignmentFailedTopic;
     private readonly ILogger<KafkaProducerService> _logger;
     private readonly IProducer<string, DriverAssignedEvent> _driverAssignedProducer;
     private readonly IProducer<string, OrderAssignmentFailedEvent> _assignmentFailedProducer;
@@ -57,8 +59,10 @@ public class KafkaProducerService : IKafkaProducerService, IDisposable
             .SetValueSerializer(new JsonSerializer<OrderAssignmentFailedEvent>())
             .Build();
 
-
-        _topic = config["Kafka:Topic"];
+        // Read topics from configuration
+        _locationTopic = config["Kafka:Topic"];               
+        _driverAssignedTopic = config["Kafka:DriverAssigned"];  
+        _assignmentFailedTopic = config["Kafka:AssignmentFailed"]; 
     }
 
     public async Task ProduceLocationUpdateAsync(
@@ -81,8 +85,8 @@ public class KafkaProducerService : IKafkaProducerService, IDisposable
                     Timestamp = DateTime.UtcNow
                 })
             };
-            _logger.LogInformation(message.Value + "  " + _topic);
-           var deliveryReport = await _producer.ProduceAsync(_topic, message);
+            _logger.LogInformation(message.Value + "  " + _locationTopic);
+           var deliveryReport = await _producer.ProduceAsync(_locationTopic, message);
             _logger.LogInformation(
                 $"Delivered to: {deliveryReport.TopicPartitionOffset}");
         }
@@ -98,7 +102,7 @@ public class KafkaProducerService : IKafkaProducerService, IDisposable
         try
         {
             _logger.LogInformation($"Publishing driver assign event...");
-            await _driverAssignedProducer.ProduceAsync("drivers-assigned", new Message<string, DriverAssignedEvent>
+            await _driverAssignedProducer.ProduceAsync(_driverAssignedTopic, new Message<string, DriverAssignedEvent>
             {
                 Key = orderId.ToString(),
                 Value = new DriverAssignedEvent(orderId, driverId, DateTime.UtcNow)
@@ -114,7 +118,7 @@ public class KafkaProducerService : IKafkaProducerService, IDisposable
     {
         try
         {
-            await _assignmentFailedProducer.ProduceAsync("order-assignment-failed",
+            await _assignmentFailedProducer.ProduceAsync(_assignmentFailedTopic,
                 new Message<string, OrderAssignmentFailedEvent>
                 {
                     Key = orderId.ToString(),

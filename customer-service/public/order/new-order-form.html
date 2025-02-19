@@ -142,7 +142,10 @@
 
         try {
           const response = await orderService.placeOrder(orderData);
-          showMessage(`Order placed successfully! ID: ${response.id}`);
+          if(response&&response.data)
+            showMessage(`Order placed successfully! ID: ${response.data}`);
+          else
+            showMessage(`Order placed successfully!`);
           $('#orderForm')[0].reset();
         } catch (error) {
           showError(error.message);

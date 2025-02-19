@@ -1,7 +1,7 @@
 ﻿using Confluent.Kafka;
 using System.Text.Json;
 
-namespace OrderService.API.Serialization;
+namespace OrderService.Infrastructure.Serialization;
 
 
 public class JsonDeserializer<T> : IDeserializer<T>

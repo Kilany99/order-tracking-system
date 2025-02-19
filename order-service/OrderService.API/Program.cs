@@ -11,7 +11,6 @@ using OrderService.API.Helpers;
 using OrderService.API.Hubs;
 using OrderService.API.Middleware;
 using OrderService.API.Models;
-using OrderService.API.Serialization;
 using OrderService.Domain.Entities;
 using OrderService.Infrastructure.Data;
 using Serilog;
@@ -21,6 +20,8 @@ using System.Text.Json;
 using Microsoft.AspNetCore.SignalR.StackExchangeRedis;
 using OrderService.Infrastructure.Services;
 using StackExchange.Redis;
+using OrderService.Infrastructure.Producers;
+using OrderService.Infrastructure.Serialization;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -28,12 +29,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 
 //Add services to the container.
-builder.WebHost.ConfigureKestrel(options =>
-{
-    options.ListenAnyIP(5000);
-    options.ListenAnyIP(50);
+//builder.WebHost.ConfigureKestrel(options =>
+//{
+//    options.ListenAnyIP(5000);
+//    options.ListenAnyIP(50);
 
-});
+//});
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -73,6 +74,9 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddScoped<JwtTokenHelper>();
 builder.Services.AddApplication();  // Extension method to register MediatR, FluentValidation
 builder.Services.AddInfrastructure(builder.Configuration);
+
+builder.Services.AddSingleton<IOrderCreatedProducer, OrderCreatedProducer>();
+builder.Services.AddHostedService<OrderAssignmentConsumer>();
 builder.Services.AddHostedService<DriverLocationConsumer>();
 builder.Services.AddSingleton<IProducer<string, OrderAssignmentFailedEvent>>(sp => 
 {
@@ -162,7 +166,7 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-    //app.UseHttpsRedirection();
+    app.UseHttpsRedirection();
 
 }
 

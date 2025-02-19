@@ -3,17 +3,18 @@ using Microsoft.AspNetCore.SignalR;
 using OrderService.API.Clients;
 using OrderService.API.Hubs;
 using OrderService.API.Models;
-using OrderService.API.Serialization;
 using OrderService.Infrastructure.Repositories;
+using OrderService.Infrastructure.Serialization;
 
 namespace OrderService.API.Consumers;
 
-public class DriverLocationConsumer : IHostedService
+public class DriverLocationConsumer : BackgroundService
 {
     private readonly IConsumer<string, DriverLocationEvent> _consumer;
     private readonly ILogger<DriverLocationConsumer> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IConfiguration _configuration;
+
     public DriverLocationConsumer(ILogger<DriverLocationConsumer> logger, IServiceScopeFactory scopeFactory, IConfiguration configuration)
     {
         _logger = logger;
@@ -31,17 +32,18 @@ public class DriverLocationConsumer : IHostedService
             .Build();
     }
 
-    public Task StartAsync(CancellationToken cancellationToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _consumer.Subscribe(_configuration["kafka:Topic"]);
+        _consumer.Subscribe("driver-location-updates");
+        _logger.LogInformation("driver-location-updates consumer is running");
 
-        Task.Run(async () =>
+        try
         {
-            while (!cancellationToken.IsCancellationRequested)
+            while (!stoppingToken.IsCancellationRequested)
             {
                 try
                 {
-                    var result = _consumer.Consume(cancellationToken);
+                    var result = _consumer.Consume(stoppingToken);
                     var location = result.Message.Value;
 
                     _logger.LogInformation(
@@ -50,26 +52,27 @@ public class DriverLocationConsumer : IHostedService
                         location.Latitude,
                         location.Longitude
                     );
-                    await ProcessLocationUpdate(result.Message.Value);
-                    _consumer.Commit(result);
 
+                    await ProcessLocationUpdate(location);
+                    _consumer.Commit(result);
+                }
+                catch (ConsumeException e)
+                {
+                    _logger.LogError(e, "Consume error");
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error processing location update");
-                    await Task.Delay(1000);
+                    await Task.Delay(1000, stoppingToken);
                 }
             }
-        }, cancellationToken);
-
-        return Task.CompletedTask;
+        }
+        finally
+        {
+            _consumer.Close();
+        }
     }
 
-    public Task StopAsync(CancellationToken cancellationToken)
-    {
-        _consumer.Close();
-        return Task.CompletedTask;
-    }
 
     private async Task ProcessLocationUpdate(DriverLocationEvent location)
     {
@@ -79,11 +82,13 @@ public class DriverLocationConsumer : IHostedService
         var orderRepository = services.GetRequiredService<IOrderRepository>();
         var hubContext = services.GetRequiredService<IHubContext<TrackingHub>>();
         var driverClient = services.GetRequiredService<IDriverClient>();
+        _logger.LogInformation("////ProcessLocationUpdate////");
 
         try
         {
             // 1. Get all orders assigned to this driver
             var assignedOrders = await orderRepository.GetOrdersByDriver(location.DriverId);
+            _logger.LogInformation("complete GetOrdersByDriver");
 
             // 2. Broadcast to connected clients
             foreach (var order in assignedOrders)
@@ -97,17 +102,21 @@ public class DriverLocationConsumer : IHostedService
                         lng = location.Longitude
                     });
             }
+            _logger.LogInformation("complete hubContext");
+
 
             // Update assigned order position to driver in Driver Service
             await driverClient.AssignDriverAsync(
                 location.Latitude,
                 location.Longitude);
+            _logger.LogInformation("complete AssignDriverAsync");
 
             // Get nearby pending orders
             var orders = await orderRepository.GetOrdersNearLocationAsync(
                 location.Latitude,
                 location.Longitude,
                 1000);
+            _logger.LogInformation("complete GetOrdersNearLocationAsync");
 
             foreach (var order in orders)
             {
