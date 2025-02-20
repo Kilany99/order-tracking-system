@@ -12,8 +12,8 @@ using OrderService.Infrastructure.Data;
 namespace OrderService.Infrastructure.Migrations
 {
     [DbContext(typeof(OrderDbContext))]
-    [Migration("20250217212813_InitialSchema")]
-    partial class InitialSchema
+    [Migration("20250220114359_updateSchema")]
+    partial class updateSchema
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

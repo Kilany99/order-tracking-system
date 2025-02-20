@@ -7,23 +7,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace OrderService.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialSchema : Migration
+    public partial class updateSchema : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<DateTime>(
-                name: "AssignedAt",
-                table: "Orders",
-                type: "timestamp with time zone",
-                nullable: true);
-
-            migrationBuilder.AddColumn<Guid>(
-                name: "DriverId",
-                table: "Orders",
-                type: "uuid",
-                nullable: true);
-
             migrationBuilder.CreateTable(
                 name: "AspNetRoles",
                 columns: table => new
@@ -62,6 +50,24 @@ namespace OrderService.Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_AspNetUsers", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Orders",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    CustomerId = table.Column<string>(type: "text", nullable: false),
+                    DriverId = table.Column<Guid>(type: "uuid", nullable: true),
+                    DeliveryAddress = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    Status = table.Column<int>(type: "integer", nullable: false),
+                    DeliveryLatitude = table.Column<double>(type: "double precision", nullable: false),
+                    DeliveryLongitude = table.Column<double>(type: "double precision", nullable: false),
+                    AssignedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Orders", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -227,18 +233,13 @@ namespace OrderService.Infrastructure.Migrations
                 name: "AspNetUserTokens");
 
             migrationBuilder.DropTable(
+                name: "Orders");
+
+            migrationBuilder.DropTable(
                 name: "AspNetRoles");
 
             migrationBuilder.DropTable(
                 name: "AspNetUsers");
-
-            migrationBuilder.DropColumn(
-                name: "AssignedAt",
-                table: "Orders");
-
-            migrationBuilder.DropColumn(
-                name: "DriverId",
-                table: "Orders");
         }
     }
 }

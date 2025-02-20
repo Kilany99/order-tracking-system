@@ -48,6 +48,10 @@ namespace DriverService.API.DependencyInjection
             services.AddScoped<IRequestHandler<AssignDriverCommand, Guid>, AssignDriverCommandHandler>();
             services.AddScoped<IRequestHandler<FindNearestDriverQuery, Guid>, FindNearestDriverQueryHandler>();
 
+            services.AddScoped<IRequestHandler<GetActiveOrdersByDriverQuery, DriverOrderResponse>, GetActiveOrdersByDriverQueryHandler>();
+            services.AddScoped<IRequestHandler<CheckDriverAvailabilityQuery, bool>, CheckDriverAvailabilityQueryHandler>();
+
+
             return services;
         }
 

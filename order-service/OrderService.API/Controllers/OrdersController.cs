@@ -83,4 +83,5 @@ public class OrdersController : ControllerBase
         var orders = await _mediator.Send(new GetAllOrdersQuery());
         return Ok(new ApiResponse<List<OrderResponse>>(orders, "Orders fetched successfully"));
     }
+
 }

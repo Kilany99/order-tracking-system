@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace DriverService.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialSchema : Migration
+    public partial class newSchema : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -23,7 +23,9 @@ namespace DriverService.Infrastructure.Migrations
                     RegistrationDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     CurrentLatitude = table.Column<double>(type: "double precision", nullable: false),
                     CurrentLongitude = table.Column<double>(type: "double precision", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Status = table.Column<int>(type: "integer", nullable: false),
+                    LastAvailableTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {

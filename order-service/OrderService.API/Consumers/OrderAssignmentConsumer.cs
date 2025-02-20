@@ -1,87 +1,151 @@
 ﻿using Confluent.Kafka;
-using Microsoft.Extensions.Hosting;
 using OrderService.API.Clients;
 using OrderService.API.Models;
 using OrderService.Infrastructure.Serialization;
-using System.Text.Json;
 
 namespace OrderService.API.Consumers;
-
 public class OrderAssignmentConsumer : BackgroundService
 {
-    private readonly IConsumer<string, OrderCreatedEvent> _consumer;
     private readonly ILogger<OrderAssignmentConsumer> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly IConfiguration _configuration;
+    private readonly string _topic;
+    private readonly string _bootstrapServers;
+    private IConsumer<string, OrderCreatedEvent> _consumer;
+    private readonly CancellationTokenSource _cancellationTokenSource;
 
     public OrderAssignmentConsumer(
         ILogger<OrderAssignmentConsumer> logger,
         IServiceScopeFactory scopeFactory,
-        IConfiguration configuration)
+        IConfiguration config)
     {
         _logger = logger;
         _scopeFactory = scopeFactory;
-        _configuration = configuration;
-        var consumerConfig = new ConsumerConfig
-        {
-            BootstrapServers = _configuration["Kafka:BootstrapServers"],
-            GroupId = "order-service",
-            AutoOffsetReset = AutoOffsetReset.Earliest,
-            EnableAutoCommit = true
-        };
-
-        _consumer = new ConsumerBuilder<string, OrderCreatedEvent>(consumerConfig)
-            .SetValueDeserializer(new JsonDeserializer<OrderCreatedEvent>())
-            .Build();
+        _topic = config["Kafka:OrderCreated"] ?? "orders-created";
+        _bootstrapServers = config["Kafka:BootstrapServers"];
+        _cancellationTokenSource = new CancellationTokenSource();
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _consumer.Subscribe(_configuration["Kafka:OrderCreated"]);
-        _logger.LogInformation("Assign driver consumer is running...");
+        await Task.Yield(); // Ensure we don't block startup
 
         try
         {
-            while (!stoppingToken.IsCancellationRequested)
-            {
-                try
-                {
-                    var result = _consumer.Consume(stoppingToken);
-                    _logger.LogInformation("Received order assignment for OrderId={OrderId}", result.Message.Value.OrderId);
-
-                    await ProcessOrderAssignment(result.Message.Value, stoppingToken);
-                    _consumer.Commit(result);
-                }
-                catch (ConsumeException e)
-                {
-                    _logger.LogError(e, "Consume error");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error processing order assignment");
-                    await Task.Delay(1000, stoppingToken);
-                }
-            }
+            await StartConsumerLoop(stoppingToken);
         }
-        finally
+        catch (Exception ex)
         {
-            _consumer.Close();
+            _logger.LogError(ex, "Error in consumer loop");
         }
     }
 
-    private async Task ProcessOrderAssignment(
-        OrderCreatedEvent orderEvent,
-        CancellationToken cancellationToken)
+    private async Task StartConsumerLoop(CancellationToken stoppingToken)
+    {
+        using var scope = _scopeFactory.CreateScope();
+
+        var consumerConfig = new ConsumerConfig
+        {
+            BootstrapServers = _bootstrapServers,
+            GroupId = "order-assignment-group",
+            AutoOffsetReset = AutoOffsetReset.Earliest,
+            EnableAutoCommit = false,
+            MaxPollIntervalMs = 300000,
+            SessionTimeoutMs = 45000,
+            HeartbeatIntervalMs = 15000
+        };
+
+        using (_consumer = new ConsumerBuilder<string, OrderCreatedEvent>(consumerConfig)
+            .SetValueDeserializer(new JsonDeserializer<OrderCreatedEvent>())
+            .Build())
+        {
+            await Task.Run(async () =>
+            {
+                try
+                {
+                    _consumer.Subscribe(_topic);
+                    _logger.LogInformation("Consumer started for topic: {Topic}", _topic);
+
+                    while (!stoppingToken.IsCancellationRequested)
+                    {
+                        try
+                        {
+                            var consumeResult = _consumer.Consume(TimeSpan.FromMilliseconds(100));
+                            if (consumeResult == null) continue;
+
+                            // Process the message in a separate task
+                            await ProcessMessageAsync(consumeResult, stoppingToken);
+                        }
+                        catch (ConsumeException e)
+                        {
+                            _logger.LogError(e, "Consume error");
+                            await Task.Delay(1000, stoppingToken);
+                        }
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger.LogInformation("Consumer stopping");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Unexpected error in consumer loop");
+                }
+                finally
+                {
+                    try
+                    {
+                        _consumer.Close();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error closing consumer");
+                    }
+                }
+            }, stoppingToken);
+        }
+    }
+
+    private async Task ProcessMessageAsync(ConsumeResult<string, OrderCreatedEvent> consumeResult, CancellationToken stoppingToken)
+    {
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var orderEvent = consumeResult.Message.Value;
+
+            _logger.LogInformation(
+                "Processing order {OrderId} from partition {Partition}",
+                orderEvent.OrderId,
+                consumeResult.Partition.Value);
+
+            await ProcessOrderAssignment(orderEvent, stoppingToken);
+
+            // Commit offset after successful processing
+            _consumer.Commit(consumeResult);
+
+            _logger.LogInformation(
+                "Successfully processed order {OrderId}",
+                orderEvent.OrderId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Error processing message for order {OrderId}",
+                consumeResult.Message.Value.OrderId);
+            throw;
+        }
+    }
+
+    private async Task ProcessOrderAssignment(OrderCreatedEvent orderEvent, CancellationToken ct)
     {
         using var scope = _scopeFactory.CreateScope();
         var services = scope.ServiceProvider;
 
-        var driverClient = services.GetRequiredService<IDriverClient>();
-        var producer = services.GetRequiredService<IProducer<string, DriverAssignedEvent>>();
-
         try
         {
-            var driverId = await driverClient.AssignDriverAsync(
+            var driverClient = services.GetRequiredService<IDriverClient>();
+            var producer = services.GetRequiredService<IProducer<string, DriverAssignedEvent>>();
+
+            var driverId = await driverClient.FindAvailableDriverAsync(
                 orderEvent.DeliveryLatitude,
                 orderEvent.DeliveryLongitude);
 
@@ -92,32 +156,42 @@ public class OrderAssignmentConsumer : BackgroundService
                     orderEvent.OrderId,
                     driverId,
                     DateTime.UtcNow)
-            }, cancellationToken);
+            }, ct);
 
-            _logger.LogInformation("Assigned driver {DriverId} to order {OrderId}",
-                driverId, orderEvent.OrderId);
+            _logger.LogInformation(
+                "Assigned driver {DriverId} to order {OrderId}",
+                driverId,
+                orderEvent.OrderId);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            _logger.LogWarning("No available drivers for order {OrderId}", orderEvent.OrderId);
-            _logger.LogWarning("No available drivers for order {OrderId}", orderEvent.OrderId);
+            _logger.LogError(ex,
+                "Failed to process order assignment for {OrderId}",
+                orderEvent.OrderId);
 
             var failProducer = services.GetRequiredService<IProducer<string, OrderAssignmentFailedEvent>>();
-
             await failProducer.ProduceAsync("order-assignment-failed", new Message<string, OrderAssignmentFailedEvent>
             {
                 Key = orderEvent.OrderId.ToString(),
                 Value = new OrderAssignmentFailedEvent(
                     orderEvent.OrderId,
-                    "No available drivers",
+                    ex.Message,
                     DateTime.UtcNow)
-            }, cancellationToken);
+            }, ct);
         }
+    }
+
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        _cancellationTokenSource.Cancel();
+        _consumer?.Close();
+        await base.StopAsync(cancellationToken);
     }
 
     public override void Dispose()
     {
-        _consumer.Close();
+        _cancellationTokenSource.Dispose();
+        _consumer?.Dispose();
         base.Dispose();
     }
 }

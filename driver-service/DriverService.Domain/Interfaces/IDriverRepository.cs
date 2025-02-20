@@ -17,7 +17,6 @@ namespace DriverService.Domain.Interfaces;
     Task<DriverAuth> GetAuthByEmailAsync(string email);
     Task<Driver?> FindNearestDriverAsync(double latitude, double longitude);
     Task<Driver> AssignDriverAsync(Guid driverId, Guid orderId);
-
-
+   
 
 }

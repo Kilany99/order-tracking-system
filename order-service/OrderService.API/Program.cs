@@ -1,5 +1,4 @@
 using Confluent.Kafka;
-using Microsoft.AspNet.SignalR.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;
@@ -16,12 +15,11 @@ using OrderService.Infrastructure.Data;
 using Serilog;
 using System.Reflection;
 using System.Text;
-using System.Text.Json;
-using Microsoft.AspNetCore.SignalR.StackExchangeRedis;
 using OrderService.Infrastructure.Services;
 using StackExchange.Redis;
 using OrderService.Infrastructure.Producers;
 using OrderService.Infrastructure.Serialization;
+using OrderService.API.HealthCheck;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -76,8 +74,24 @@ builder.Services.AddApplication();  // Extension method to register MediatR, Flu
 builder.Services.AddInfrastructure(builder.Configuration);
 
 builder.Services.AddSingleton<IOrderCreatedProducer, OrderCreatedProducer>();
-builder.Services.AddHostedService<OrderAssignmentConsumer>();
-builder.Services.AddHostedService<DriverLocationConsumer>();
+//builder.Services.AddHostedService<OrderAssignmentConsumer>();
+//builder.Services.AddHostedService<DriverLocationConsumer>();
+builder.Services.AddHostedService<KafkaConsumerService>();
+
+builder.Services.AddSingleton<IProducer<string, DriverAssignedEvent>>(sp =>
+{
+    var config = new ProducerConfig
+    {
+        BootstrapServers = builder.Configuration["Kafka:BootstrapServers"],
+        EnableIdempotence = true,
+        MessageSendMaxRetries = 3,
+        Acks = Acks.All
+    };
+
+    return new ProducerBuilder<string, DriverAssignedEvent>(config)
+        .SetValueSerializer(new JsonSerializer<DriverAssignedEvent>())
+        .Build();
+});
 builder.Services.AddSingleton<IProducer<string, OrderAssignmentFailedEvent>>(sp => 
 {
     var config = new ProducerConfig {
@@ -85,6 +99,20 @@ builder.Services.AddSingleton<IProducer<string, OrderAssignmentFailedEvent>>(sp 
     };
     return new ProducerBuilder<string, OrderAssignmentFailedEvent>(config)
         .SetValueSerializer(new JsonSerializer<OrderAssignmentFailedEvent>())
+        .Build();
+});
+
+builder.Services.AddSingleton<IProducer<string, DriverLocationEvent>>(sp =>
+{
+    var config = new ProducerConfig
+    {
+        BootstrapServers = builder.Configuration["Kafka:BootstrapServers"],
+        EnableIdempotence = true,
+        MessageSendMaxRetries = 3,
+        Acks = Acks.All
+    };
+    return new ProducerBuilder<string, DriverLocationEvent>(config)
+        .SetValueSerializer(new JsonSerializer<DriverLocationEvent>())
         .Build();
 });
 // Add SignalR
@@ -101,7 +129,8 @@ builder.Services.Configure<HubOptions>(options => {
 });
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 {
-    var configuration = builder.Configuration.GetConnectionString("Redis");
+    var configuration = ConfigurationOptions.Parse(builder.Configuration.GetConnectionString("Redis"));
+    configuration.AbortOnConnectFail = false;
     return ConnectionMultiplexer.Connect(configuration);
 });
 builder.Services.AddSingleton<RedisCacheService>();
@@ -158,6 +187,8 @@ builder.Host.UseSerilog((context, config) =>
     config.WriteTo.Console()
           .ReadFrom.Configuration(context.Configuration);
 });
+builder.Services.AddHealthChecks()
+    .AddCheck<KafkaHealthCheck>("kafka");
 
 var app = builder.Build();
 

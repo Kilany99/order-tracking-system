@@ -9,6 +9,8 @@ using OrderService.Application.Features.Orders.Queries;
 using OrderService.Application.Responses;
 using OrderService.Infrastructure.Data;
 using OrderService.Infrastructure.Repositories;
+using OrderService.Infrastructure.Routing.Interfaces;
+using OrderService.Infrastructure.Routing.Services;
 using OrderService.Infrastructure.Services;
 using System.Reflection;
 
@@ -32,6 +34,10 @@ public static class InfrastructureServiceRegistration
         {
             client.BaseAddress = new Uri(config["DriverService:BaseUrl"]);
         });
+
+        services.AddHttpClient<IRoutingService, OSRMRoutingService>();
+        services.AddMemoryCache();
+        services.AddSingleton<IRoutingService, OSRMRoutingService>();
 
         return services;
     }

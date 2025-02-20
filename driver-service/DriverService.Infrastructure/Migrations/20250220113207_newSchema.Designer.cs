@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DriverService.Infrastructure.Migrations
 {
     [DbContext(typeof(DriverDbContext))]
-    [Migration("20250217212124_InitialSchema")]
-    partial class InitialSchema
+    [Migration("20250220113207_newSchema")]
+    partial class newSchema
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -43,12 +43,18 @@ namespace DriverService.Infrastructure.Migrations
                     b.Property<bool>("IsAvailable")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime?>("LastAvailableTime")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTime>("RegistrationDate")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");

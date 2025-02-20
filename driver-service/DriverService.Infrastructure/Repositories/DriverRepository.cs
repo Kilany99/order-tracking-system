@@ -6,6 +6,7 @@ using DriverService.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NpgsqlTypes;
+using StackExchange.Redis;
 
 
 namespace DriverService.Infrastructure.Repositories
@@ -158,6 +159,9 @@ namespace DriverService.Infrastructure.Repositories
                 throw;
             }
         }
+
+     
+    
         private double CalculateDistance(
       double lat1, double lon1,
       double lat2, double lon2)

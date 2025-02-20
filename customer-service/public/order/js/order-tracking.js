@@ -83,3 +83,57 @@ function showError(message) {
 function showMessage(message) {
   $('#successMessage').text(message).fadeIn().delay(5000).fadeOut();
 }
+
+// order-tracking.js
+export class OrderTracker {
+    constructor(mapElementId, hubUrl) {
+        this.map = this.initMap(mapElementId);
+        this.connection = this.initHubConnection(hubUrl);
+        this.markers = {
+            driver: null,
+            package: null
+        };
+    }
+
+    initMap(elementId) {
+        return L.map(elementId).setView([0, 0], 13);
+    }
+
+    initHubConnection(url) {
+        return new signalR.HubConnectionBuilder()
+            .withUrl(url)
+            .configureLogging(signalR.LogLevel.Information)
+            .build();
+    }
+
+    async startTracking(orderId) {
+        try {
+            await this.connection.start();
+            await this.connection.invoke("SubscribeToOrder", orderId);
+            
+            this.connection.on("DriverLocationUpdate", position => {
+                this.updateDriverPosition(position);
+            });
+            
+            this.connection.onclose(() => this.reconnect(orderId));
+        } catch (err) {
+            console.error("Connection failed:", err);
+        }
+    }
+
+    updateDriverPosition({ lat, lng }) {
+        if (!this.markers.driver) {
+            this.markers.driver = L.marker([lat, lng], { icon: DRIVER_ICON })
+                .addTo(this.map)
+                .bindPopup("Driver Location");
+        } else {
+            this.markers.driver.setLatLng([lat, lng]);
+        }
+        this.map.panTo([lat, lng]);
+    }
+
+    async reconnect(orderId) {
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        await this.startTracking(orderId);
+    }
+}

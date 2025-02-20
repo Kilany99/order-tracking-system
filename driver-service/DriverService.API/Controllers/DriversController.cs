@@ -146,5 +146,33 @@ public class DriversController : ControllerBase
             return BadRequest("Failed to find any drivers");
         }
     }
+    [HttpGet("{driverId}/active-orders")]
+    public async Task<IActionResult> GetActiveOrdersByDriver(Guid driverId)
+    {
+        try
+        {
+            var orders = await _mediator.Send(new GetActiveOrdersByDriverQuery(driverId));
+            return Ok(orders);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Error getting active orders for driver {driverId}");
+            return StatusCode(500, "Error retrieving active orders");
+        }
+    }
 
+    [HttpGet("{driverId}/availability")]
+    public async Task<IActionResult> CheckDriverAvailability(Guid driverId)
+    {
+        try
+        {
+            var isAvailable = await _mediator.Send(new CheckDriverAvailabilityQuery(driverId));
+            return Ok(new { IsAvailable = isAvailable });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Error checking availability for driver {driverId}");
+            return StatusCode(500, "Error checking driver availability");
+        }
+    }
 }

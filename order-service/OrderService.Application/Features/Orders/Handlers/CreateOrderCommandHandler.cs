@@ -38,9 +38,10 @@ namespace OrderService.Application.Features.Orders.Handlers
 
             var orderEvent = new OrderCreatedEvent(
                order.Id,
+               "1",
                order.DeliveryLatitude,
-               order.DeliveryLongitude,
-               DateTime.UtcNow);
+               order.DeliveryLongitude
+               );
             await _producer.ProduceAsync(orderEvent);
 
             _logger.LogInformation($"Order created successfully for  {request.CustomerId} of orderID: {order.Id} ");
