@@ -1,70 +1,182 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Order Tracking</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="../css/style.css"/>
-  <style>
-    #map-container {
-      margin: 20px 0;
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
-    #map {
-      height: 500px;
-      width: 100%;
-      background: #f8f9fa;
-    }
-    .status-card {
-      padding: 20px;
-      background: #dddcdc;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .error-message, .success-message {
-      padding: 10px;
-      margin: 10px 0;
-      border-radius: 4px;
-      display: none;
-    }
-    .error-message { background: #f8d7da; color: #721c24; }
-    .success-message { background: #d4edda; color: #155724; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Tracking</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="../css/style.css"/>
+    <style>
+        #map-container {
+            margin: 20px 0;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        #map {
+            height: 500px;
+            width: 100%;
+            background: #f8f9fa;
+        }
+        
+        .status-card {
+            padding: 20px;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .error-message, .success-message {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            display: none;
+        }
+        
+        .error-message { 
+            background: #f8d7da; 
+            color: #721c24; 
+        }
+        
+        .success-message { 
+            background: #d4edda; 
+            color: #155724; 
+        }
+
+        /* Route and ETA styles */
+        .eta-marker {
+            background: none;
+            border: none;
+        }
+
+        .eta-label {
+            background-color: rgba(33, 150, 243, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .eta-label div {
+            margin: 2px 0;
+        }
+
+        /* Loading indicator */
+        .loading {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+
+        /* Order status styles */
+        .status-Created { color: #007bff; }
+        .status-Preparing { color: #ffc107; }
+        .status-OutForDelivery { color: #28a745; }
+        .status-Delivered { color: #6c757d; }
+
+        /* Route info panel */
+        .route-info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            z-index: 1000;
+            min-width: 200px;
+        }
+
+        .route-info h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+
+        .route-info p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Order Tracking</h1>
+    <div class="container">
+        <h1>Order Tracking</h1>
+        
+        <div id="orderSection" style="display: none;">
+            <h2>Track Your Order</h2>
+            
+            <div class="tracking-controls">
+                <input type="text" id="orderId" placeholder="Enter Order ID">
+                <button id="trackOrderBtn" class="btn">Track Order</button>
+            </div>
+            
+            <div id="orderStatus" class="status-card"></div>
+            <div id="errorMessage" class="error-message"></div>
+            <div id="successMessage" class="success-message"></div>
+        </div>
+
+        <div id="map-container">
+            <h3>Delivery Tracking</h3>
+            <div id="map"></div>
+            <div id="routeInfo" class="route-info" style="display: none;">
+                <h4>Delivery Information</h4>
+                <p id="distance">Distance: --</p>
+                <p id="eta">ETA: --</p>
+                <p id="trafficInfo">Traffic: Normal</p>
+            </div>
+        </div>
+
+        <!-- Loading indicator -->
+        <div id="loading" class="loading">
+            <div class="spinner-border text-primary" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script type="module" src="./js/lib/auth-serivce.js"></script>
+    <script type="module" src="./js/services/order-service.js"></script>
+    <script type="module" src="./js/order-tracking.js"></script>
     
-    <div id="orderSection" style="display: none;">
-      <h2>Track Your Order</h2>
-      <form id="orderForm">
-        <!-- Order form fields -->
-      </form>
-      
-      <div class="tracking-controls">
-        <input type="text" id="orderId" placeholder="Enter Order ID">
-        <button id="trackOrderBtn" class="btn">Track Order</button>
-      </div>
-      
-      <div id="orderStatus" class="status-card"></div>
-      <div id="errorMessage" class="error-message"></div>
-      <div id="successMessage" class="success-message"></div>
-    </div>
+    <script>
+        // Verify SignalR loading
+        if (window.signalR) {
+            console.log("SignalR loaded successfully");
+        } else {
+            console.error("SignalR not loaded");
+        }
 
-    <div id="map-container">
-      <h3 style="padding-left: 10px;">Delivery Tracking</h3>
-      <div id="map"></div>
-    </div>
-  </div>
+        // Show/hide loading indicator
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+        }
 
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script type="module" src="./js/lib/auth-serivce.js"></script>
-  <script type="module" src="./js/services/order-service.js"></script>
-  <script type="module" src="./js/order-tracking.js"></script>
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        // Update route info panel
+        function updateRouteInfo(distance, eta, trafficCondition) {
+            document.getElementById('distance').textContent = `Distance: ${distance}`;
+            document.getElementById('eta').textContent = `ETA: ${eta}`;
+            document.getElementById('trafficInfo').textContent = `Traffic: ${trafficCondition}`;
+            document.getElementById('routeInfo').style.display = 'block';
+        }
+    </script>
 </body>
 </html>

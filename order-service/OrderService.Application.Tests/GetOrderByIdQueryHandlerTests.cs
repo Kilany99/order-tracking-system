@@ -18,7 +18,7 @@ namespace OrderService.Application.Tests
         }
 
         [Fact]
-        public async Task Handle_ShouldReturnOrder_WhenOrderExists()
+        public async Task Handle_ShouldReturnOrder_WhenOrderExistsAndDontHaveDriverId()
         {
             // Arrange
             var orderId = Guid.NewGuid();
@@ -35,6 +35,28 @@ namespace OrderService.Application.Tests
             // Assert
             result.Should().NotBeNull();
             result.Id.Should().Be(orderId);
+        }
+
+        [Fact]
+        public async Task Handle_ShouldReturnOrder_WhenOrderExistsAndHasDriverId()
+        {
+            // Arrange
+            var orderId = Guid.NewGuid();
+            var existingOrder = Order.Create("cust-123", "123 Main St", 3.5, 665.3);
+            existingOrder.SetDriverId(Guid.NewGuid());
+            // Simulate setting the order's ID
+            existingOrder.GetType().GetProperty("Id")!.SetValue(existingOrder, orderId);
+            _mockRepo.Setup(r => r.GetByIdAsync(orderId)).ReturnsAsync(existingOrder);
+
+            var query = new GetOrderByIdQuery(orderId);
+
+            // Act
+            var result = await _handler.Handle(query, CancellationToken.None);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Id.Should().Be(orderId);
+            result.DriverId.Should().NotBeNull();
         }
     }
 }

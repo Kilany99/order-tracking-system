@@ -159,9 +159,17 @@ namespace DriverService.Infrastructure.Repositories
                 throw;
             }
         }
+        public async Task<Driver?> IsOrderAssignedToAnyDriverAsync(Guid orderId) =>
+            await _context.Drivers.FirstOrDefaultAsync(d => d.CurrentOrderId == orderId);
 
-     
-    
+        public async Task<DriverResponse> GetByOrderId(Guid orderId)
+        {
+            var driver = await _context.Drivers.FirstOrDefaultAsync(d => d.CurrentOrderId == orderId) ??
+                throw new Exception("Driver not found for give order id {orderId}");
+            return new DriverResponse(driver.Id,driver.Name,driver.VehicleType,driver.IsAvailable);
+        }
+        
+
         private double CalculateDistance(
       double lat1, double lon1,
       double lat2, double lon2)

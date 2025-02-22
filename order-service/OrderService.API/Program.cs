@@ -27,12 +27,15 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 
 //Add services to the container.
-//builder.WebHost.ConfigureKestrel(options =>
-//{
-//    options.ListenAnyIP(5000);
-//    options.ListenAnyIP(50);
 
-//});
+if (!builder.Environment.IsDevelopment())
+{
+    builder.WebHost.ConfigureKestrel(options =>
+    {
+        options.ListenAnyIP(5000);
+        options.ListenAnyIP(50); 
+    });
+}
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -134,14 +137,14 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
     return ConnectionMultiplexer.Connect(configuration);
 });
 builder.Services.AddSingleton<RedisCacheService>();
-builder.Services.AddCors(options => {
-    options.AddPolicy("AllowAll", policy => {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+//builder.Services.AddCors(options => {
+//    options.AddPolicy("AllowAll", policy => {
+//        policy.AllowAnyOrigin()
+//              .AllowAnyMethod()
+//              .AllowAnyHeader();
 
-    });
-});
+//    });
+//});
 
 
 builder.Services.AddCors(options =>
@@ -151,6 +154,7 @@ builder.Services.AddCors(options =>
         policy.WithOrigins("http://localhost:3000")
               .AllowAnyHeader()
               .AllowAnyMethod()
+              .SetIsOriginAllowed(origin => true) 
               .AllowCredentials();
     });
 });

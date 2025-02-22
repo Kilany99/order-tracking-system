@@ -5,6 +5,8 @@ using OrderService.API.Hubs;
 using OrderService.API.Models;
 using OrderService.Infrastructure.Repositories;
 using OrderService.Infrastructure.Serialization;
+using OrderService.Infrastructure.Services;
+using RestSharp.Extensions;
 using System.Threading.Channels;
 
 namespace OrderService.API.Consumers;
@@ -140,9 +142,16 @@ public class KafkaConsumerService : BackgroundService
                 {
                     var result = consumer.Consume(TimeSpan.FromMilliseconds(100));
                     if (result?.Message?.Value == null) continue;
+                    var location = result.Message.Value;
 
-                    _logger.LogInformation("Received location update for DriverId: {DriverId}",
-                        result.Message.Value.DriverId);
+                    // Validate the location event
+                    if (location.DriverId == Guid.Empty)
+                    {
+                        _logger.LogWarning("Received location update with empty DriverId");
+                        continue;
+                    }
+                    _logger.LogInformation("Received location update for DriverId: {DriverId} at {Latitude}, {Longitude}",
+                        location.DriverId,location.Latitude,location.Longitude);
 
                     await _locationChannel.Writer.WriteAsync(result.Message.Value, stoppingToken);
                     consumer.Commit(result);
@@ -174,12 +183,28 @@ public class KafkaConsumerService : BackgroundService
                 using var scope = _scopeFactory.CreateScope();
                 var driverClient = scope.ServiceProvider.GetRequiredService<IDriverClient>();
                 var producer = scope.ServiceProvider.GetRequiredService<IProducer<string, DriverAssignedEvent>>();
-
+                var orderRepository = scope.ServiceProvider.GetRequiredService<IOrderRepository>();
                 _logger.LogInformation("Processing order {OrderId}", orderEvent.OrderId);
+               
 
-                var driverId = await driverClient.FindAvailableDriverAsync(
+                var driverId = await driverClient.AssignDriverToOrderAsync(
                     orderEvent.DeliveryLatitude,
-                    orderEvent.DeliveryLongitude);
+                    orderEvent.DeliveryLongitude,
+                    orderEvent.OrderId);
+                // Assign driverId to the order
+                var order = await orderRepository.GetByIdAsync(orderEvent.OrderId);
+                if(order==null)
+                { 
+                    _logger.LogError("Order not found with the sent OrderId {orderId}",
+                            orderEvent.OrderId);
+                    return;
+                }
+
+
+                order.DriverId = driverId;
+                order.MarkAsPreparing();
+                await orderRepository.SaveChangesAsync();
+                _logger.LogInformation("Order {OrderId} info has been updated with the driverId {driverId} ", orderEvent.OrderId, driverId);
 
                 await producer.ProduceAsync("drivers-assigned", new Message<string, DriverAssignedEvent>
                 {
@@ -211,9 +236,17 @@ public class KafkaConsumerService : BackgroundService
                     locationEvent.DriverId);
 
                 var orders = await orderRepository.GetOrdersByDriver(locationEvent.DriverId);
-
+                if (!orders.Any())
+                {
+                    _logger.LogInformation(
+                        "No active orders found for driver {DriverId}",
+                        locationEvent.DriverId);
+                    return;
+                }
+                
                 foreach (var order in orders)
                 {
+                   
                     await hubContext.Clients.Group(order.Id.ToString())
                         .SendAsync("DriverLocationUpdate", new
                         {
@@ -228,6 +261,19 @@ public class KafkaConsumerService : BackgroundService
                         "Sent location update for driver {DriverId} to order {OrderId}",
                         locationEvent.DriverId, order.Id);
                 }
+                // Update driver's location in cache
+                var cacheService = scope.ServiceProvider.GetRequiredService<RedisCacheService>();
+                _logger.LogInformation(
+                        "Caching location update for driver {DriverId} ...",
+                        locationEvent.DriverId);
+                await cacheService.CacheDriverLocationAsync(
+                    locationEvent.DriverId,
+                    locationEvent.Latitude,
+                    locationEvent.Longitude
+                    );
+                _logger.LogInformation(
+                      "Cached location update successfully for {DriverId}",
+                      locationEvent.DriverId);
             }
             catch (Exception ex)
             {

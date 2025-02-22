@@ -11,7 +11,7 @@ namespace OrderService.API.Clients
 {
     public interface IDriverClient
     {
-        Task<Guid> FindAvailableDriverAsync(double latitude, double longitude);
+        Task<Guid> AssignDriverToOrderAsync(double latitude, double longitude,Guid orderId);
         Task<Guid> FindNearestDriverAsync(double latitude, double longitude);
         Task UpdateDriverPosition(Guid driverId, double lat, double lng);
         Task<DriverLocation?> GetDriverLocation(Guid orderId);
@@ -36,7 +36,7 @@ namespace OrderService.API.Clients
             _cacheService = cacheService;
         }
 
-        public async Task<Guid> FindAvailableDriverAsync(double latitude, double longitude)
+        public async Task<Guid> AssignDriverToOrderAsync(double latitude, double longitude, Guid orderId)
         {
             try
             {
@@ -44,6 +44,7 @@ namespace OrderService.API.Clients
                 {
                     Latitude = latitude,
                     Longitude = longitude,
+                    OrderId = orderId
                 });
 
                 response.EnsureSuccessStatusCode();
@@ -120,25 +121,48 @@ namespace OrderService.API.Clients
 
         public async Task<DriverLocation?> GetDriverLocation(Guid orderId)
         {
-            // Get the driver id associated with the order
-            var response = await _httpClient.GetAsync($"/api/drivers/{orderId}/get-by-orderid");
-            if (!response.IsSuccessStatusCode)
+            try
             {
-                _logger.LogWarning("Failed to retrieve driver id for order {OrderId}", orderId);
+                _logger.LogInformation("Getting driver associated with order Id {OrderId}...", orderId);
+
+                // Get driver ID by order ID
+                var driverResponse = await _httpClient.GetAsync($"/api/drivers/get-by-orderid?orderId={orderId}");
+
+                if (!driverResponse.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("Failed to retrieve driver for order {OrderId}. Status: {StatusCode}",
+                        orderId, driverResponse.StatusCode);
+                    return null;
+                }
+
+                var driver = await driverResponse.Content.ReadFromJsonAsync<DriverResponse>();
+
+                if (driver?.Id == null || driver.Id == Guid.Empty)
+                {
+                    _logger.LogWarning("Invalid or empty driver ID received for order {OrderId}", orderId);
+                    return null;
+                }
+
+                _logger.LogInformation("Getting driver location for Id {DriverId}...", driver.Id);
+
+                // Get driver location
+                var locationResponse = await _httpClient.GetAsync($"/api/drivers/{driver.Id}/location");
+
+                if (!locationResponse.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning("Failed to retrieve location for driver {DriverId}. Status: {StatusCode}",
+                        driver.Id, locationResponse.StatusCode);
+                    return null;
+                }
+
+                var location = await locationResponse.Content.ReadFromJsonAsync<DriverLocation>();
+                return location;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving driver location for order {OrderId}", orderId);
                 return null;
             }
-
-            var driverIdString = await response.Content.ReadAsStringAsync();
-            if (string.IsNullOrWhiteSpace(driverIdString))
-            {
-                _logger.LogWarning("Received empty driver id for order {OrderId}", orderId);
-                return null;
-            }
-
-            // Look up the driver location in the local cache (_positions)
-            return _positions.TryGetValue(driverIdString, out var position)
-                ? position
-                : null;
         }
         public async Task<IEnumerable<DriverOrderResponse>> GetActiveOrdersByDriver(Guid driverId)
         {

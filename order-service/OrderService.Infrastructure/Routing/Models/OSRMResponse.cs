@@ -15,5 +15,11 @@ public class OSRMRoute
 {
     public double Distance { get; set; }
     public double Duration { get; set; }
-    public string Geometry { get; set; }
+    public Geometry Geometry { get; set; }
+}
+
+public class Geometry
+{
+    public string Type { get; set; }
+    public List<List<double>> Coordinates { get; set; }
 }

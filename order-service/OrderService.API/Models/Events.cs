@@ -51,12 +51,12 @@ public class DriverLocationEvent
 
     public DriverLocationEvent() { }
 
-    public DriverLocationEvent(Guid driverId, double latitude, double longitude,DateTime span)
+    public DriverLocationEvent(Guid driverId, double latitude, double longitude)
     {
         DriverId = driverId;
         Latitude = latitude;
         Longitude = longitude;
-        TimeSpan = span;
+        TimeSpan = DateTime.UtcNow;
         
     }
 

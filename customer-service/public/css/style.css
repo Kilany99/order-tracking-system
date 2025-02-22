@@ -165,3 +165,70 @@ button:hover {
 .delivery-marker {
     filter: hue-rotate(300deg); /* Makes package icon purple */
 }
+
+.distance-marker {
+    background: none;
+    border: none;
+}
+
+.distance-label {
+    background-color: rgba(33, 150, 243, 0.9);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/*Add animation for the route line */
+@keyframes dash {
+    to {
+        stroke-dashoffset: 20;
+    }
+}
+
+.leaflet-polyline {
+    animation: dash 2s linear infinite;
+}
+
+.eta-marker {
+    background: none;
+    border: none;
+    pointer-events: none;
+}
+
+.eta-label {
+    background-color: rgba(33, 150, 243, 0.9);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    white-space: nowrap;
+}
+
+.route-info {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    min-width: 200px;
+    z-index: 1000;
+}
+
+.route-info h4 {
+    margin: 0 0 10px 0;
+    color: #333;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.route-info p {
+    margin: 5px 0;
+    font-size: 13px;
+    color: #666;
+}

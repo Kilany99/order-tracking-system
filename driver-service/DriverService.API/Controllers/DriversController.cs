@@ -8,10 +8,9 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
-
+//[Authorize]
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
 public class DriversController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -25,28 +24,28 @@ public class DriversController : ControllerBase
         _logger = logger;
         _redisCacheService = redisCacheService;
     }
-
+   // [Authorize(Policy = "DriverOrServicePolicy")]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetDriver(Guid id)
     {
         var result = await _mediator.Send(new GetDriverByIdQuery(id));
         return Ok(result);
     }
-
+    [Authorize(Policy = "DriverPolicy")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteDriver(Guid id)
     {
         var result = await _mediator.Send(new DeleteDriverCommand(id));
         return Ok(result ? "driver deleted successfully" : "driver not found");
     }
-
+    [Authorize(Policy = "DriverOrServicePolicy")]
     [HttpGet("available")]
     public async Task<IActionResult> GetAvailableDrivers()
     {
         var result = await _mediator.Send(new GetAvailableDriversQuery());
         return Ok(result);
     }
-
+    //[Authorize(Policy = "DriverPolicy")]
     [HttpPost("{id}/location")]
     public async Task<IActionResult> UpdateLocation(
         Guid id,
@@ -55,6 +54,7 @@ public class DriversController : ControllerBase
         await _mediator.Send(new UpdateDriverLocationCommand(id, dto.Latitude, dto.Longitude));
         return Accepted();
     }
+   // [Authorize(Policy = "DriverOrServicePolicy")]
     [HttpGet("{id}/location")]
     public async Task<IActionResult> GetDriverLocation(Guid id)
     {
@@ -75,6 +75,7 @@ public class DriversController : ControllerBase
         var result = await _mediator.Send(new GetDriverLocationQuery(id));
         return Ok(result);
     }
+    [Authorize(Policy = "DriverOrServicePolicy")]
     [HttpGet("{id}/history")]
     public async Task<IActionResult> GetLocationHistory(
         Guid id,
@@ -110,6 +111,8 @@ public class DriversController : ControllerBase
     /// </summary>
     /// <param name="command">Contains the latitude and longitude.</param>
     /// <returns>The assigned driver ID.</returns>
+    //[Authorize(Policy = "DriverOrServicePolicy")]
+
     [HttpPost("assign")]
     public async Task<IActionResult> AssignDriver([FromBody] AssignDriverCommand command)
     {
@@ -122,7 +125,7 @@ public class DriversController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to assign driver");
-            return BadRequest("No available drivers!");
+            return BadRequest($"An Error Occured while assiging driver! :{ex.Message}");
         }
     }
 
@@ -132,6 +135,7 @@ public class DriversController : ControllerBase
     /// <param name="lat">Latitude</param>
     /// <param name="lon">Longitude</param>
     /// <returns>The nearest driver ID.</returns>
+    [Authorize(Policy = "DriverOrServicePolicy")]
     [HttpGet("nearest")]
     public async Task<IActionResult> FindNearestDriver([FromQuery] double lat, [FromQuery] double lon)
     {
@@ -146,6 +150,7 @@ public class DriversController : ControllerBase
             return BadRequest("Failed to find any drivers");
         }
     }
+    [Authorize(Policy = "DriverOrServicePolicy")]
     [HttpGet("{driverId}/active-orders")]
     public async Task<IActionResult> GetActiveOrdersByDriver(Guid driverId)
     {
@@ -160,7 +165,7 @@ public class DriversController : ControllerBase
             return StatusCode(500, "Error retrieving active orders");
         }
     }
-
+    [Authorize(Policy = "DriverOrServicePolicy")]
     [HttpGet("{driverId}/availability")]
     public async Task<IActionResult> CheckDriverAvailability(Guid driverId)
     {
@@ -173,6 +178,20 @@ public class DriversController : ControllerBase
         {
             _logger.LogError(ex, $"Error checking availability for driver {driverId}");
             return StatusCode(500, "Error checking driver availability");
+        }
+    }
+    [HttpGet("get-by-orderid")]
+    public async Task<IActionResult> GetByOrderId(Guid orderId)
+    {
+        try
+        {
+            var driver = await _mediator.Send(new GetDriverByOrderIdQuery(orderId));
+            return Ok(driver);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Error getting driver for the send order ID: {orderId}");
+            return StatusCode(500, $"Error getting driver for the send order ID: {orderId}");
         }
     }
 }

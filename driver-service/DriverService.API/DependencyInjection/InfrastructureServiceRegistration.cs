@@ -12,6 +12,11 @@ using DriverService.Core.Features.Driver.Queries;
 using DriverService.Core.QueryHandlers;
 using DriverService.Core.Features.Driver.Handlers;
 using DriverService.Infrastructure.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using Microsoft.AspNetCore.Authorization;
+using DriverService.Domain.Entities;
 namespace DriverService.API.DependencyInjection
 {
     public static class InfrastructureServiceRegistration
@@ -50,9 +55,118 @@ namespace DriverService.API.DependencyInjection
 
             services.AddScoped<IRequestHandler<GetActiveOrdersByDriverQuery, DriverOrderResponse>, GetActiveOrdersByDriverQueryHandler>();
             services.AddScoped<IRequestHandler<CheckDriverAvailabilityQuery, bool>, CheckDriverAvailabilityQueryHandler>();
-
+            services.AddScoped<IRequestHandler<GetDriverByOrderIdQuery,DriverResponse>,GetDriverByOrderIdQueryHandler>();
 
             return services;
+        }
+
+        public static IServiceCollection AddAuth(this IServiceCollection services, IConfiguration configuration)
+        {
+            // Configure keys with KeyIds
+            var defaultKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Jwt:Key"]));
+            defaultKey.KeyId = "DefaultKeyId"; // Match token generation
+
+            var serviceKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["ServiceAuth:SecurityKey"]));
+            serviceKey.KeyId = "ServiceKeyId"; // Unique ID for service tokens
+
+            services.AddAuthentication(options =>
+            {
+                options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = configuration["Jwt:Issuer"],
+                    ValidAudience = configuration["Jwt:Audience"], 
+                    IssuerSigningKey = new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(configuration["Jwt:Key"])),
+
+                };
+                options.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = context =>
+                    {
+                        var logger = context.HttpContext.RequestServices
+                            .GetRequiredService<ILogger<Program>>();
+                        logger.LogInformation("Driver token validated successfully");
+                        return Task.CompletedTask;
+                    },
+                    OnAuthenticationFailed = context =>
+                    {
+                        var logger = context.HttpContext.RequestServices
+                            .GetRequiredService<ILogger<Program>>();
+                        logger.LogError(context.Exception, "Driver authentication failed");
+                        return Task.CompletedTask;
+                    }
+                };
+            
+            })
+            .AddJwtBearer("ServiceAuth", options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = configuration["ServiceAuth:Issuer"],
+                    ValidAudience = configuration["ServiceAuth:Audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(configuration["ServiceAuth:SecurityKey"]))
+                };
+                options.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = context =>
+                    {
+                        var logger = context.HttpContext.RequestServices
+                            .GetRequiredService<ILogger<Program>>();
+                        logger.LogInformation("Service token validated successfully");
+                        return Task.CompletedTask;
+                    },
+                    OnAuthenticationFailed = context =>
+                    {
+                        var logger = context.HttpContext.RequestServices
+                            .GetRequiredService<ILogger<Program>>();
+                        logger.LogError(context.Exception, "Service authentication failed");
+                        return Task.CompletedTask;
+                    }
+                };
+            });
+
+            // Add authorization policies
+            services.AddAuthorization(options =>
+            {
+              
+                // Policy for driver endpoints
+                options.AddPolicy("DriverPolicy", policy =>
+                    policy.AddAuthenticationSchemes("Bearer")
+                        .RequireClaim("role", "driver"));
+
+                // Policy for service-to-service communication
+                options.AddPolicy("ServicePolicy", policy =>
+                    policy.AddAuthenticationSchemes("ServiceAuth")
+                        .RequireClaim("scope", "driver_service"));
+
+                // Combined policy
+                options.AddPolicy("DriverOrServicePolicy", policy =>
+                {
+                    policy.AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme, "ServiceAuth")
+                          .RequireAssertion(context =>
+                          {
+                              var hasDriverRole = context.User.HasClaim("role", "driver");
+                              var hasServiceScope = context.User.HasClaim("scope", "driver_service");
+                              return hasDriverRole || hasServiceScope;
+                          });
+                });
+            });
+            return services;
+
         }
 
     }

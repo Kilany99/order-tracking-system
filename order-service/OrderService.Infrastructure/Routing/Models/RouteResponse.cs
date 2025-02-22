@@ -8,7 +8,7 @@ public class RouteResponse
     public List<Coordinate> RoutePoints { get; set; }
     public DateTime EstimatedArrival { get; set; }
 }
-public struct Coordinate
+public class Coordinate
 {
     public double Latitude { get; set; }
     public double Longitude { get; set; }

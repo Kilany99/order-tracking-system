@@ -2,6 +2,7 @@
 using OrderService.Infrastructure.Helpers;
 using OrderService.Infrastructure.Data;
 using OrderService.Domain.Entities;
+using Microsoft.Extensions.Logging;
 namespace OrderService.Infrastructure.Repositories;
 
 
@@ -15,16 +16,19 @@ public interface IOrderRepository
     Task DeleteAsync(Order order);
     Task<List<Order>> GetOrdersNearLocationAsync(double latitude,double longitude, double radiusInMeters);
     Task<bool> TryAssignDriver(Guid orderId, Guid driverId);
-    Task<List<Order>> GetOrdersByDriver(Guid driverId);
-
-
+    Task<IEnumerable<Order>> GetOrdersByDriver(Guid driverId);
+    Task<bool> SaveChangesAsync();
 
 }
 public class OrderRepository : IOrderRepository
 {
     private readonly OrderDbContext _context;
-
-    public OrderRepository(OrderDbContext context) => _context = context;
+    private readonly ILogger<OrderRepository> _logger;
+    public OrderRepository(OrderDbContext context,ILogger<OrderRepository> logger)
+    {
+        _context = context;
+        _logger = logger;
+    }
 
     public async Task AddAsync(Order order)
     {
@@ -89,11 +93,26 @@ public class OrderRepository : IOrderRepository
             return false;
         }
     }
-    public async Task<List<Order>> GetOrdersByDriver(Guid driverId)
+    public async Task<IEnumerable<Order>> GetOrdersByDriver(Guid driverId)
     {
-        return await _context.Orders
-            .Where(o => o.DriverId == driverId && o.Status != OrderStatus.Delivered)
-            .ToListAsync();
+        try
+        {
+            return await _context.Orders
+                .Where(o => o.DriverId == driverId &&
+                           o.Status != OrderStatus.Delivered)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "//Order Repo//:Error getting orders for driver {DriverId}",
+                driverId);
+            return [];
+        }
+    }
+    public async Task<bool> SaveChangesAsync()
+    {
+        return await _context.SaveChangesAsync() >= 0;
     }
 
 }

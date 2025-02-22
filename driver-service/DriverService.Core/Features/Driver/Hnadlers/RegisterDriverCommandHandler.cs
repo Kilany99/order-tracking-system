@@ -1,5 +1,6 @@
 ﻿using DriverService.Core.Dtos;
 using DriverService.Core.Features.Driver.Commands;
+using DriverService.Domain.Entities;
 using DriverService.Domain.Interfaces;
 using MediatR;
 namespace DriverService.Core.Features.Driver.Hnadlers

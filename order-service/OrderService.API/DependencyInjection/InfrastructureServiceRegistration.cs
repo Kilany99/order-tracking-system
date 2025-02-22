@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.AspNet.SignalR.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using OrderService.API.Clients;
+using OrderService.API.Handlers;
 using OrderService.Application.Features.Orders.Commands;
 using OrderService.Application.Features.Orders.Handlers;
 using OrderService.Application.Features.Orders.Queries;
@@ -12,6 +13,7 @@ using OrderService.Infrastructure.Repositories;
 using OrderService.Infrastructure.Routing.Interfaces;
 using OrderService.Infrastructure.Routing.Services;
 using OrderService.Infrastructure.Services;
+using System.Net.Http.Headers;
 using System.Reflection;
 
 namespace OrderService.API.DependencyInjection;
@@ -33,11 +35,16 @@ public static class InfrastructureServiceRegistration
         services.AddHttpClient<IDriverClient, HttpDriverClient>(client =>
         {
             client.BaseAddress = new Uri(config["DriverService:BaseUrl"]);
-        });
+            client.DefaultRequestHeaders.Accept.Add(
+                new MediaTypeWithQualityHeaderValue("application/json"));
+        })
+        .AddHttpMessageHandler<ServiceAuthenticationHandler>();
+        services.AddTransient<ServiceAuthenticationHandler>();
+
 
         services.AddHttpClient<IRoutingService, OSRMRoutingService>();
         services.AddMemoryCache();
-        services.AddSingleton<IRoutingService, OSRMRoutingService>();
+        services.AddScoped<IRoutingService, OSRMRoutingService>();
 
         return services;
     }

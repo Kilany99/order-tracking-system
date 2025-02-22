@@ -48,6 +48,10 @@ public class Order : Entity<Guid>
     }
 
     public void MarkAsOutForDelivery() => Status = OrderStatus.OutForDelivery;
+
+    public void MarkAsPreparing() => Status = OrderStatus.Preparing;
+
+    public void SetDriverId(Guid driverId) => DriverId = driverId;
 }
 
 public enum OrderStatus { Created, Preparing, OutForDelivery, Delivered }

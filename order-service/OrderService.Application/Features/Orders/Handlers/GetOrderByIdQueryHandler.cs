@@ -19,7 +19,21 @@ public class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery, Order
     public async Task<OrderResponse> Handle(GetOrderByIdQuery request, CancellationToken cancellationToken)
     {
         var order = await _orderRepository.GetByIdAsync(request.Id) ?? throw new Exception("Order not found!");
-        var orderResponse = new OrderResponse(order.Id, order.CustomerId, order.DeliveryAddress, order.Status,order.DeliveryLatitude,order.DeliveryLongitude);
-        return orderResponse;
+        return order.DriverId.HasValue
+            ? new OrderResponse(
+                id: order.Id,
+                driverId: order.DriverId.Value,
+                cutomerId: order.CustomerId,
+                delvAddress: order.DeliveryAddress,
+                orderStatus: order.Status,
+                latitude: order.DeliveryLatitude,
+                longitude: order.DeliveryLongitude)
+            : new OrderResponse(
+                id: order.Id,
+                cutomerId: order.CustomerId,
+                delvAddress: order.DeliveryAddress,
+                orderStatus: order.Status,
+                latitude: order.DeliveryLatitude,
+                longitude: order.DeliveryLongitude);
     }
 }

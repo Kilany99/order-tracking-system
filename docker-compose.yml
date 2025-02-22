@@ -67,6 +67,8 @@ services:
     environment:
       ConnectionStrings__Postgres: "Host=postgres;Database=delivery;Username=postgres;Password=1999King"
       Kafka__BootstrapServers: "kafka:9092"
+      DriverService__BaseUrl: http://driver-service
+
 
     
   driver-service:
@@ -132,6 +134,8 @@ services:
       timeout: 5s
     networks:
       - my-network  
+
+
 networks:
   my-network:  
     driver: bridge

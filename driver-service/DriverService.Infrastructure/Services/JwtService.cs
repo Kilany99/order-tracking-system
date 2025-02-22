@@ -22,7 +22,7 @@ public class JwtService : IJwtService
     {
         var securityKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
-
+        securityKey.KeyId = "DefaultKeyId";
         var credentials = new SigningCredentials(
             securityKey, SecurityAlgorithms.HmacSha256);
 
@@ -30,7 +30,8 @@ public class JwtService : IJwtService
         {
             new Claim(JwtRegisteredClaimNames.Sub, driver.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, auth.Email),
-            new Claim("vehicleType", driver.VehicleType)
+            new Claim("vehicleType", driver.VehicleType),
+            new Claim("role", "driver")
         };
 
         var token = new JwtSecurityToken(

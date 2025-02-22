@@ -10,6 +10,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DriverService.Domain", "Dri
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DriverService.Infrastructure", "DriverService.Infrastructure\DriverService.Infrastructure.csproj", "{A2CDC997-39A7-4832-89DB-D6C3EEB852FF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DriverService.Core.Tests", "DriverService.Core.Tests\DriverService.Core.Tests.csproj", "{DA649644-229E-4FDA-8620-FDD9F88A5D6E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -32,6 +34,10 @@ Global
 		{A2CDC997-39A7-4832-89DB-D6C3EEB852FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A2CDC997-39A7-4832-89DB-D6C3EEB852FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A2CDC997-39A7-4832-89DB-D6C3EEB852FF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DA649644-229E-4FDA-8620-FDD9F88A5D6E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DA649644-229E-4FDA-8620-FDD9F88A5D6E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DA649644-229E-4FDA-8620-FDD9F88A5D6E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DA649644-229E-4FDA-8620-FDD9F88A5D6E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
