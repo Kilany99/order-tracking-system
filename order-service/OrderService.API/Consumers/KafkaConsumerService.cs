@@ -186,7 +186,7 @@ public class KafkaConsumerService : BackgroundService
                 var orderRepository = scope.ServiceProvider.GetRequiredService<IOrderRepository>();
                 _logger.LogInformation("Processing order {OrderId}", orderEvent.OrderId);
                
-
+                
                 var driverId = await driverClient.AssignDriverToOrderAsync(
                     orderEvent.DeliveryLatitude,
                     orderEvent.DeliveryLongitude,

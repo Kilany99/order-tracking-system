@@ -5,6 +5,7 @@ using OrderService.Application.Features.Orders.Commands;
 using OrderService.Application.Features.Orders.Queries;
 using OrderService.Application.Responses;
 using OrderService.Domain;
+using System.Security.Claims;
 
 namespace OrderService.API.Controllers;
 /// <summary>
@@ -16,8 +17,13 @@ namespace OrderService.API.Controllers;
 public class OrdersController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ILogger<OrdersController> _logger;
 
-    public OrdersController(IMediator mediator) => _mediator = mediator;
+    public OrdersController(IMediator mediator, ILogger<OrdersController> logger)
+    {
+        _mediator = mediator;
+        _logger = logger;
+    }
 
 
     /// <summary>
@@ -32,8 +38,16 @@ public class OrdersController : ControllerBase
     /// }
     /// </example>
     [HttpPost]
-    public async Task<ApiResponse<Guid>> CreateOrder([FromBody] CreateOrderCommand command)
+    public async Task<ApiResponse<Guid>> CreateOrder([FromBody] CreateOrderRequest request)
     {
+        var customerId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(customerId))
+        {
+            var response = new ApiResponse<Guid>(Guid.Empty,"Unauthorized 401");
+            return response;
+        }
+        _logger.LogInformation("Verified cumstomer with customer ID : {customerId}",customerId);
+        var command = new CreateOrderCommand(customerId, request.DeliveryAddress, request.DeliveryLatitude, request.DeliveryLatitude);
         var orderId = await _mediator.Send(command);
         return orderId;
     }
@@ -77,7 +91,7 @@ public class OrdersController : ControllerBase
     }
     /// <summary>Gets a list of order.</summary>
 
-    [HttpGet]
+    [HttpGet("get-all")]
     public async Task<ActionResult<ApiResponse<List<OrderResponse>>>> ListOrders()
     {
         var orders = await _mediator.Send(new GetAllOrdersQuery());
