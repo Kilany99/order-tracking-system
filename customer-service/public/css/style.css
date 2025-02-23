@@ -100,11 +100,8 @@ button:hover {
     border-radius: 5px;
   }
   
-  .error-message {
-    color: red;
-    text-align: center;
-    display: none;
-  }
+
+
   
   /* Index Page */
   .container {
@@ -117,7 +114,8 @@ button:hover {
     text-align: center;
     display: none;
     margin: 10px auto;
-    max-width: 400px;
+    max-width: 600px;
+    
   }
   
   .success-message {
@@ -125,7 +123,7 @@ button:hover {
     text-align: center;
     display: none;
     margin: 10px auto;
-    max-width: 400px;
+    max-width: 600px;
   }
   .error-item {
     margin: 5px 0;

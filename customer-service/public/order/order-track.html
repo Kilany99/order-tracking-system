@@ -108,6 +108,33 @@
             margin: 5px 0;
             font-size: 14px;
         }
+        .btn {
+            transition: opacity 0.2s ease;
+        }
+        .btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .spinner-border {
+            vertical-align: -0.15em;
+            margin-right: 8px;
+        }
+        .status-0 {
+    color: blue; /* Created */
+        }
+        .status-1 {
+            color: green; /* Preparing */
+        }
+        .status-2 {
+            color: green; /* Out for Delivery */
+        }
+        .status-3 {
+            color: black; /* Delivered, default color */
+        }
+        .status-4 {
+            color: red
+        }
     </style>
 </head>
 <body>
@@ -119,7 +146,7 @@
             
             <div class="tracking-controls">
                 <input type="text" id="orderId" placeholder="Enter Order ID">
-                <button id="trackOrderBtn" class="btn">Track Order</button>
+                <button id="trackOrderBtn" class="btn" ">Track Order</button>
             </div>
             
             <div id="orderStatus" class="status-card"></div>
@@ -160,15 +187,7 @@
         } else {
             console.error("SignalR not loaded");
         }
-
-        // Show/hide loading indicator
-        function showLoading() {
-            document.getElementById('loading').style.display = 'block';
-        }
-
-        function hideLoading() {
-            document.getElementById('loading').style.display = 'none';
-        }
+ 
 
         // Update route info panel
         function updateRouteInfo(distance, eta, trafficCondition) {

@@ -51,7 +51,8 @@ public class Order : Entity<Guid>
 
     public void MarkAsPreparing() => Status = OrderStatus.Preparing;
 
+    public void MarkAsCancelled() => Status = OrderStatus.Cancelled;
     public void SetDriverId(Guid driverId) => DriverId = driverId;
 }
 
-public enum OrderStatus { Created, Preparing, OutForDelivery, Delivered }
+public enum OrderStatus { Created, Preparing, OutForDelivery, Delivered, Cancelled }

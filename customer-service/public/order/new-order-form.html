@@ -229,7 +229,7 @@
 
         try {
           const response = await orderService.placeOrder(orderData);
-          showMessage(`Order placed successfully! ID: ${response.id || 'N/A'}`);
+          showMessage(`Order placed successfully! ID: ${response.data || 'N/A'}`);
           $('#orderForm')[0].reset();
           if (marker) {
             map.removeLayer(marker);

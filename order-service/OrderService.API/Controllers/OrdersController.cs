@@ -47,7 +47,7 @@ public class OrdersController : ControllerBase
             return response;
         }
         _logger.LogInformation("Verified cumstomer with customer ID : {customerId}",customerId);
-        var command = new CreateOrderCommand(customerId, request.DeliveryAddress, request.DeliveryLatitude, request.DeliveryLatitude);
+        var command = new CreateOrderCommand(customerId, request.DeliveryAddress, request.DeliveryLatitude, request.DeliveryLongitude);
         var orderId = await _mediator.Send(command);
         return orderId;
     }

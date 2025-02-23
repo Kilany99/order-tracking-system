@@ -206,6 +206,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+//app.UseMiddleware<JwtValidationMiddleware>();
 //app.UseCors("AllowAll");
 app.UseCors("AllowCustomerApp");
 

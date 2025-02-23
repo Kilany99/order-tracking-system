@@ -54,7 +54,7 @@ namespace OrderService.API.Clients
             catch (HttpRequestException ex)
             {
                 _logger.LogError(ex, "Failed to assign driver");
-                throw new Exception("No Available Drivers!");
+                throw;
             }
         }
         public async Task<Guid> FindNearestDriverAsync(double latitude, double longitude)

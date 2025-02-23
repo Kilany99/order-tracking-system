@@ -2,6 +2,29 @@ class AuthService {
     constructor(baseUrl) {
       this.baseUrl = `${baseUrl}/api/auth`;
     }
+      get token() {
+    return localStorage.getItem('jwtToken');
+  }
+
+  isAuthenticated() {
+    return !!this.token && !this.isTokenExpired();
+  }
+
+  isTokenExpired() {
+    if (!this.token) return true;
+    try {
+      const payload = JSON.parse(atob(this.token.split('.')[1]));
+      const exp = payload.exp * 1000; // Convert to milliseconds
+      return Date.now() > exp;
+    } catch {
+      return true;
+    }
+  }
+
+  logout() {
+    localStorage.removeItem('jwtToken');
+    window.location.href = '/auth/login';
+  }
   
     async login(email, password) {
       try {
@@ -51,7 +74,7 @@ class AuthService {
   }
   
   // Initialize AuthService .
-  const authService = new AuthService('http://localhost:5000');
+  const authService = new AuthService('https://localhost:7094');
   
   // Form Submissions
   $('#loginForm').submit(async (e) => {

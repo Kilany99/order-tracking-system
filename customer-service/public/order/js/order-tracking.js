@@ -1,7 +1,7 @@
 import { OrderService } from './services/order-service.js';
 import authService from './lib/auth-serivce.js';
 
-const orderService = new OrderService(`http://localhost:5000`);
+const orderService = new OrderService(`https://localhost:7094`);
 
 $(document).ready(() => {
     initializeUI();
@@ -23,7 +23,14 @@ function setupEventHandlers() {
     $('#orderForm').submit(handleOrderSubmit);
     $('#trackOrderBtn').click(handleTrackOrder);
 }
+  // Show/hide loading indicator
+  function showLoading() {
+    document.getElementById('loading').style.display = 'block';
+}
 
+function hideLoading() {
+    document.getElementById('loading').style.display = 'none';
+}
 async function handleOrderSubmit(e) {
     e.preventDefault();
     const orderData = {
@@ -43,12 +50,21 @@ async function handleOrderSubmit(e) {
 
 async function handleTrackOrder() {
     const orderId = $("#orderId").val().trim();
+    const trackBtn = $("#trackOrderBtn");
+    const originalText = trackBtn.html();
+    showLoading();
     if (!orderId) {
         showError("Please enter a valid Order ID");
+        hideLoading();
         return;
     }
 
     try {
+        trackBtn.prop('disabled', true);
+        trackBtn.html(`
+            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            Tracking...
+        `);
         const order = await orderService.trackOrder(orderId);
         updateOrderDisplay(order);
         
@@ -61,11 +77,17 @@ async function handleTrackOrder() {
         await orderService.connectSignalR(orderId);
     } catch (error) {
         showError(error.message);
+    }finally {
+        // Restore button state
+        trackBtn.prop('disabled', false);
+        trackBtn.html(originalText);
+        hideLoading();
+
     }
 }
 
 function updateOrderDisplay(order) {
-    const statusMap = ["Created", "Preparing", "Out for Delivery", "Delivered"];
+    const statusMap = ["Created", "Preparing", "Out for Delivery", "Delivered", "Cancelled"];
     const html = `
         <div class="status-card">
             <h3>Order #${order.id}</h3>
