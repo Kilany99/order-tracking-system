@@ -1,12 +1,23 @@
 import authService from '../lib/auth-serivce.js';
 
-const DRIVER_ICON = L.icon({
-  iconUrl: 'https://img.icons8.com/?size=100&id=20XFfv36rpCn&format=png&color=000000',
-  iconSize: [40, 40],
-  iconAnchor: [20, 40],
-  popupAnchor: [0, -40]
+const DRIVER_ICON = L.divIcon({
+  className: 'delivery-driver-icon',
+  html: `
+      <div class="delivery-animation" id="delivery-animation">
+          <dotlottie-player
+              src="https://lottie.host/de9c93b5-bb2d-4828-8090-4b457b35e24c/NgTsWX4Yc5.lottie"
+              background="transparent"
+              speed="1"
+              style="width: 60px; height: 60px"
+              loop
+              autoplay
+          ></dotlottie-player>
+      </div>
+  `,
+  iconSize: [60, 60],
+  iconAnchor: [30, 30],
+  popupAnchor: [0, -30]
 });
-
 const PACKAGE_ICON = L.icon({
   iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
   iconSize: [32, 32],
@@ -55,63 +66,99 @@ export class OrderService {
       throw error;
     }
   }
-
   handleDriverLocationUpdate(lat, lng) {
     if (!this.map) {
-      console.error("Map not initialized");
-      return;
+        console.error("Map not initialized");
+        return;
     }
+
+    console.log("Updating driver location:", lat, lng);
 
     if (!this.markers.driver) {
-      this.markers.driver = L.marker([lat, lng], { 
-        icon: DRIVER_ICON,
-        zIndexOffset: 1000
-      }).addTo(this.map).bindPopup('Driver Location');
+        this.markers.driver = L.marker([lat, lng], { 
+            icon: DRIVER_ICON,
+            zIndexOffset: 1000
+        }).addTo(this.map);
+        this.lastPosition = { lat, lng };
     } else {
-      this.markers.driver.setLatLng([lat, lng]);
-    }
+        const angle = this.calculateAngle(
+            this.lastPosition.lat,
+            this.lastPosition.lng,
+            lat,
+            lng
+        );
 
-    if (this.markers.order) {
-      const bounds = L.latLngBounds([
-        [lat, lng],
-        this.markers.order.getLatLng()
-      ]);
-      this.map.fitBounds(bounds, { padding: [50, 50] });
+        this.markers.driver.setLatLng([lat, lng]);
+
+        // Rotate the entire animation container
+        const animationContainer = this.markers.driver.getElement()
+            .querySelector('.delivery-animation');
+        if (animationContainer) {
+            animationContainer.style.transform = `rotate(${angle}deg)`;
+        }
+
+        this.lastPosition = { lat, lng };
+      }
+    if (!this.markers.driver) {
+        // Create new marker
+        this.markers.driver = L.marker([lat, lng], { 
+            icon: DRIVER_ICON,
+            zIndexOffset: 1000
+        }).addTo(this.map);
+        console.log("Created new driver marker");
     } else {
-      this.map.panTo([lat, lng], { animate: true, duration: 0.5 });
+        // Update existing marker
+        this.markers.driver.setLatLng([lat, lng]);
+        console.log("Updated driver marker position");
     }
 
+    // Fit bounds if order marker exists
     if (this.markers.order) {
-      const deliveryPos = this.markers.order.getLatLng();
-      this.updateRouteAndETA(lat, lng, deliveryPos.lat, deliveryPos.lng)
-        .catch(err => console.error("Route update error:", err));
+        const bounds = L.latLngBounds([
+            [lat, lng],
+            this.markers.order.getLatLng()
+        ]);
+        this.map.fitBounds(bounds, { padding: [50, 50] });
+    } else {
+        this.map.panTo([lat, lng], { animate: true, duration: 0.5 });
     }
-  }
 
-  async updateRouteAndETA(driverLat, driverLng, deliveryLat, deliveryLng) {
-    const url = new URL(`${this.baseUrl}/api/routing/route`);
-    url.searchParams.append('startLat', driverLat);
-    url.searchParams.append('startLng', driverLng);
-    url.searchParams.append('endLat', deliveryLat);
-    url.searchParams.append('endLng', deliveryLng);
+    // Update route if order marker exists
+    if (this.markers.order) {
+        const deliveryPos = this.markers.order.getLatLng();
+        this.updateRouteAndETA(lat, lng, deliveryPos.lat, deliveryPos.lng)
+            .catch(err => console.error("Route update error:", err));
+    }
+}
 
-    try {
-      const routeData = await this._secureRequest(url.toString(), {
-        headers: { 'Accept': 'application/json' }
-      });
-      
+async updateRouteAndETA(driverLat, driverLng, deliveryLat, deliveryLng) {
+  try {
+      const routeData = await this._secureRequest(
+          `${this.baseUrl}/api/routing/route`,
+          {
+              method: 'POST',
+              body: JSON.stringify({
+                  startLat: driverLat,
+                  startLng: driverLng,
+                  endLat: deliveryLat,
+                  endLng: deliveryLng
+              })
+          }
+      );
+    
       this.displayRoute(routeData);
       const distance = (routeData.distance / 1000).toFixed(1);
       const eta = new Date(routeData.estimatedArrival).toLocaleTimeString();
       this.updateRouteInfoPanel(distance, eta);
-      
+    
       return routeData;
-    } catch (error) {
+  } catch (error) {
       console.error('Routing API error:', error);
       this.displayDirectRoute(driverLat, driverLng, deliveryLat, deliveryLng);
       throw error;
-    }
   }
+}
+
 
   displayRoute(routeData) {
     if (this.routeLine) {
@@ -179,7 +226,16 @@ export class OrderService {
       routeInfo.style.display = 'block';
     }
   }
-
+  calculateAngle(lat1, lng1, lat2, lng2) {
+    const dx = lng2 - lng1;
+    const dy = lat2 - lat1;
+    let angle = Math.atan2(dy, dx) * 180 / Math.PI;
+    
+    // Adjust angle to point in the direction of movement
+    angle = angle + 90; // Adjust based on your icon's default orientation
+    
+    return angle;
+  }
   getTrafficCondition() {
     const hour = new Date().getHours();
     if ((hour >= 7 && hour <= 9) || (hour >= 16 && hour <= 18)) {
@@ -216,6 +272,7 @@ export class OrderService {
     if (this.map) {
       this.map.remove();
       this.markers = { order: null, driver: null };
+
     }
     
     this.map = L.map(containerId).setView(coords, 13);
@@ -223,6 +280,15 @@ export class OrderService {
       attribution: '© OpenStreetMap contributors'
     }).addTo(this.map);
   }
+  // Add this method to your OrderService class
+testDriverMarker() {
+  if (!this.map) {
+      console.error("Map not initialized");
+      return;
+  }
+
+
+}
 
   addPackageMarker(coords, address) {
     if (this.markers.order) {

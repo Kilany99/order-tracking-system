@@ -100,6 +100,7 @@ if (app.Environment.IsDevelopment())
 
 }
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+
 app.UseCors("AllowAll");
 app.UseRouting();
 app.UseAuthentication();

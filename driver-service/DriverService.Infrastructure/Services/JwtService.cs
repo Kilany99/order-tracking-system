@@ -31,17 +31,17 @@ public class JwtService : IJwtService
             new Claim(JwtRegisteredClaimNames.Sub, driver.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, auth.Email),
             new Claim("vehicleType", driver.VehicleType),
-            new Claim("role", "driver")
+            new Claim(ClaimTypes.Role, "driver") 
         };
 
         var token = new JwtSecurityToken(
             issuer: _config["Jwt:Issuer"],
             audience: _config["Jwt:Audience"],
-            claims: claims,
+            claims: claims, 
             expires: DateTime.UtcNow.AddMinutes(60),
             signingCredentials: credentials
         );
-
+       
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
     public RefreshToken GenerateRefreshToken()

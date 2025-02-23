@@ -48,7 +48,7 @@ input[type="text"]:focus, input[type="number"]:focus {
 }
 
 button {
-    width: 290%;
+    width: 100%;
     padding: 12px;
     background-color: #3498db;
     color: white;

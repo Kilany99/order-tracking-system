@@ -17,6 +17,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using DriverService.Domain.Entities;
+using System.Security.Claims;
 namespace DriverService.API.DependencyInjection
 {
     public static class InfrastructureServiceRegistration
@@ -86,6 +87,7 @@ namespace DriverService.API.DependencyInjection
                     ValidAudience = configuration["Jwt:Audience"], 
                     IssuerSigningKey = new SymmetricSecurityKey(
                         Encoding.UTF8.GetBytes(configuration["Jwt:Key"])),
+                    RoleClaimType = "role",
 
                 };
                 options.Events = new JwtBearerEvents
@@ -93,16 +95,39 @@ namespace DriverService.API.DependencyInjection
                     OnTokenValidated = context =>
                     {
                         var logger = context.HttpContext.RequestServices
-                            .GetRequiredService<ILogger<Program>>();
-                        logger.LogInformation("Driver token validated successfully");
+                    .GetRequiredService<ILogger<Program>>();
+
+                        // Log all claims
+                        var claims = context.Principal.Claims.Select(c => $"{c.Type}: {c.Value}");
+                        logger.LogInformation("Token validated with claims: {Claims}",
+                            string.Join(", ", claims));
+                        // Check for role claim
+                        var roleClaim = context.Principal.Claims
+                            .FirstOrDefault(c => c.Type == "role");
+                        logger.LogInformation("Role claim found: {RoleClaim}",
+                            roleClaim?.Value ?? "none");
+                        // Log authentication result
+                        logger.LogInformation("IsAuthenticated: {IsAuthenticated}",
+                            context.Principal.Identity.IsAuthenticated);
                         return Task.CompletedTask;
                     },
                     OnAuthenticationFailed = context =>
                     {
                         var logger = context.HttpContext.RequestServices
-                            .GetRequiredService<ILogger<Program>>();
-                        logger.LogError(context.Exception, "Driver authentication failed");
+                     .GetRequiredService<ILogger<Program>>();
+                        logger.LogError(context.Exception,
+                            "Authentication failed: {ErrorMessage}",
+                            context.Exception.Message);
                         return Task.CompletedTask;
+                    },
+                    OnChallenge = context =>
+                    {
+                        var logger = context.HttpContext.RequestServices
+                            .GetRequiredService<ILogger<Program>>();
+                        logger.LogWarning("Authorization challenge issued: {Error}",
+                            context.Error);
+                        return Task.CompletedTask;
+                    
                     }
                 };
             
@@ -142,11 +167,11 @@ namespace DriverService.API.DependencyInjection
             // Add authorization policies
             services.AddAuthorization(options =>
             {
-              
+
                 // Policy for driver endpoints
                 options.AddPolicy("DriverPolicy", policy =>
-                    policy.AddAuthenticationSchemes("Bearer")
-                        .RequireClaim("role", "driver"));
+                  policy.AddAuthenticationSchemes("Bearer")
+                      .RequireClaim(ClaimTypes.Role, "driver"));
 
                 // Policy for service-to-service communication
                 options.AddPolicy("ServicePolicy", policy =>

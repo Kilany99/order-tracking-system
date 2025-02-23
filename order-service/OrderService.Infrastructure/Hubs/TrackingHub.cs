@@ -35,7 +35,8 @@ namespace OrderService.Infrastructure.Hubs
                 var location = await _driverLocationService.GetDriverLocation(orderId);
                 if (location != null)
                 {
-                    _logger.LogInformation("Sending initial driver location for order {OrderId}", orderId);
+                    _logger.LogInformation("Sending initial driver location for order {OrderId}: Lat={Lat}, Lng={Lng}",
+                                   orderId, location.Latitude, location.Longitude);
                     await Clients.Caller.SendAsync("DriverLocationUpdate", new
                     {
                         orderId,
@@ -44,6 +45,11 @@ namespace OrderService.Infrastructure.Hubs
                         lng = location.Longitude,
                         timestamp = location.Timestamp
                     });
+                }
+                else
+                {
+                    _logger.LogInformation("No initial driver location available for order {OrderId}",
+                        orderId);
                 }
             }
             catch (Exception ex)
@@ -73,6 +79,27 @@ namespace OrderService.Infrastructure.Hubs
                 driverId = driverId,
                 timestamp = DateTime.UtcNow
             });
+        }
+
+        public async Task BroadcastDriverLocation(Guid orderId, double lat, double lng)
+        {
+            try
+            {
+                _logger.LogInformation("Broadcasting driver location for order {OrderId}: Lat={Lat}, Lng={Lng}",
+                    orderId, lat, lng);
+
+                await Clients.Group(orderId.ToString()).SendAsync("DriverLocationUpdate", new
+                {
+                    orderId = orderId,
+                    lat = lat,
+                    lng = lng,
+                    timestamp = DateTime.UtcNow
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error broadcasting driver location for order {OrderId}", orderId);
+            }
         }
         public override async Task OnDisconnectedAsync(Exception exception)
         {
