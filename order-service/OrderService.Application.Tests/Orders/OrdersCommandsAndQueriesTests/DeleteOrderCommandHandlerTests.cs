@@ -12,7 +12,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OrderService.Application.Tests
+namespace OrderService.Application.Tests.Orders.OrdersCommandsAndQueriesTests
 {
     public class DeleteOrderCommandHandlerTests
     {

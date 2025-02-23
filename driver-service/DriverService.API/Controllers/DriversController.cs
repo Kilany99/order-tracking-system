@@ -8,7 +8,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
-//[Authorize]
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class DriversController : ControllerBase
@@ -24,7 +24,7 @@ public class DriversController : ControllerBase
         _logger = logger;
         _redisCacheService = redisCacheService;
     }
-   // [Authorize(Policy = "DriverOrServicePolicy")]
+    [Authorize(Policy = "DriverOrServicePolicy")]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetDriver(Guid id)
     {
@@ -45,7 +45,7 @@ public class DriversController : ControllerBase
         var result = await _mediator.Send(new GetAvailableDriversQuery());
         return Ok(result);
     }
-    //[Authorize(Policy = "DriverPolicy")]
+    [Authorize(Policy = "DriverPolicy")]
     [HttpPost("{id}/location")]
     public async Task<IActionResult> UpdateLocation(
         Guid id,
@@ -54,7 +54,7 @@ public class DriversController : ControllerBase
         await _mediator.Send(new UpdateDriverLocationCommand(id, dto.Latitude, dto.Longitude));
         return Accepted();
     }
-   // [Authorize(Policy = "DriverOrServicePolicy")]
+    [Authorize(Policy = "DriverOrServicePolicy")]
     [HttpGet("{id}/location")]
     public async Task<IActionResult> GetDriverLocation(Guid id)
     {
@@ -111,8 +111,8 @@ public class DriversController : ControllerBase
     /// </summary>
     /// <param name="command">Contains the latitude and longitude.</param>
     /// <returns>The assigned driver ID.</returns>
-    //[Authorize(Policy = "DriverOrServicePolicy")]
-
+ 
+    [Authorize(Policy = "DriverOrServicePolicy")]
     [HttpPost("assign")]
     public async Task<IActionResult> AssignDriver([FromBody] AssignDriverCommand command)
     {
@@ -135,6 +135,7 @@ public class DriversController : ControllerBase
     /// <param name="lat">Latitude</param>
     /// <param name="lon">Longitude</param>
     /// <returns>The nearest driver ID.</returns>
+  
     [Authorize(Policy = "DriverOrServicePolicy")]
     [HttpGet("nearest")]
     public async Task<IActionResult> FindNearestDriver([FromQuery] double lat, [FromQuery] double lon)
@@ -180,6 +181,7 @@ public class DriversController : ControllerBase
             return StatusCode(500, "Error checking driver availability");
         }
     }
+    [Authorize(Policy = "DriverOrServicePolicy")]
     [HttpGet("get-by-orderid")]
     public async Task<IActionResult> GetByOrderId(Guid orderId)
     {

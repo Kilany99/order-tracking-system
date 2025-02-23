@@ -11,7 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace OrderService.Application.Tests
+namespace OrderService.Application.Tests.Orders.OrdersCommandsAndQueriesTests
 {
     public class CreateOrderCommandHandlerTests
     {
@@ -21,7 +21,7 @@ namespace OrderService.Application.Tests
         private readonly Mock<IOrderCreatedProducer> _mockProducer = new();
         public CreateOrderCommandHandlerTests()
         {
-            _handler = new CreateOrderCommandHandler(_mockRepo.Object, _mockLogger.Object,_mockProducer.Object);
+            _handler = new CreateOrderCommandHandler(_mockRepo.Object, _mockLogger.Object, _mockProducer.Object);
         }
 
         [Fact]

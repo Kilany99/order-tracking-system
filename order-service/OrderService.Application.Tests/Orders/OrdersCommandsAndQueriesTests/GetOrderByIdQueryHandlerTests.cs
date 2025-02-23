@@ -5,7 +5,7 @@ using OrderService.Application.Features.Orders.Handlers;
 using OrderService.Infrastructure.Repositories;
 using OrderService.Domain.Entities;
 
-namespace OrderService.Application.Tests
+namespace OrderService.Application.Tests.Orders.OrdersCommandsAndQueriesTests
 {
     public class GetOrderByIdQueryHandlerTests
     {
@@ -22,7 +22,7 @@ namespace OrderService.Application.Tests
         {
             // Arrange
             var orderId = Guid.NewGuid();
-            var existingOrder = Order.Create("cust-123", "123 Main St",3.5,665.3);
+            var existingOrder = Order.Create("cust-123", "123 Main St", 3.5, 665.3);
             // Simulate setting the order's ID
             existingOrder.GetType().GetProperty("Id")!.SetValue(existingOrder, orderId);
             _mockRepo.Setup(r => r.GetByIdAsync(orderId)).ReturnsAsync(existingOrder);

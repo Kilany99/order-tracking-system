@@ -1,4 +1,5 @@
 ﻿
+using Confluent.Kafka;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -14,17 +15,21 @@ public class OSRMRoutingService : IRoutingService
     private readonly ILogger<OSRMRoutingService> _logger;
     private readonly IConfiguration _configuration;
     private readonly IMemoryCache _cache;
+    private readonly ITimeProvider _timeProvider;
+
 
     public OSRMRoutingService(
         HttpClient httpClient,
         ILogger<OSRMRoutingService> logger,
         IConfiguration configuration,
-        IMemoryCache cache)
+        IMemoryCache cache,
+        ITimeProvider timeProvider = null)
     {
         _httpClient = httpClient;
         _logger = logger;
         _configuration = configuration;
         _cache = cache;
+        _timeProvider = timeProvider ?? new SystemTimeProvider();
         _httpClient.BaseAddress = new Uri(_configuration["OSRM:BaseUrl"] ?? "http://router.project-osrm.org");
     }
 
@@ -110,7 +115,17 @@ public class OSRMRoutingService : IRoutingService
 
     private async Task<double> GetTrafficFactor(double startLat, double startLng, double endLat, double endLng)
     {
-        var hour = DateTime.Now.Hour;
+        var hour = _timeProvider.Now.Hour;
         return (hour >= 7 && hour <= 9) || (hour >= 16 && hour <= 18) ? 1.5 : 1.0;
     }
+}
+
+public interface ITimeProvider
+{
+    DateTime Now { get; }
+}
+
+public class SystemTimeProvider : ITimeProvider
+{
+    public DateTime Now => DateTime.Now;
 }

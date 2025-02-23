@@ -7,10 +7,14 @@ using OrderService.API.Handlers;
 using OrderService.Application.Features.Orders.Commands;
 using OrderService.Application.Features.Orders.Handlers;
 using OrderService.Application.Features.Orders.Queries;
+using OrderService.Application.Features.Routes.Commands;
+using OrderService.Application.Features.Routes.Handlers;
+using OrderService.Application.Features.Routes.Queries;
 using OrderService.Application.Responses;
 using OrderService.Infrastructure.Data;
 using OrderService.Infrastructure.Repositories;
 using OrderService.Infrastructure.Routing.Interfaces;
+using OrderService.Infrastructure.Routing.Models;
 using OrderService.Infrastructure.Routing.Services;
 using OrderService.Infrastructure.Services;
 using System.Net.Http.Headers;
@@ -60,6 +64,13 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<IRequestHandler<UpdateOrderCommand, ApiResponse<Guid>>, UpdateOrderCommandHandler>();
         services.AddScoped<IRequestHandler<GetAllOrdersQuery, List<OrderResponse>>, GetAllOrdersQueryHandler>();
         services.AddScoped<IRequestHandler<DeleteOrderCommand, bool>, DeleteOrderCommandHandler>();
+
+        //routes commands and queries 
+        services.AddScoped<IRequestHandler<GetRouteQuery,RouteResponse>,GetRouteQueryHandler>();
+        services.AddScoped<IRequestHandler<CalculateETACommand, TimeSpan>, CalculateETACommandHandler>();
+        services.AddScoped<IRequestHandler<CalculateDistanceCommand, double>, CalculateDistanceCommandHandler>();
+
+
 
         return services;
     }

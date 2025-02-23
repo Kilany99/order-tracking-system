@@ -38,7 +38,7 @@ namespace OrderService.Application.Features.Orders.Handlers
 
             var orderEvent = new OrderCreatedEvent(
                order.Id,
-               "1",
+               order.CustomerId,
                order.DeliveryLatitude,
                order.DeliveryLongitude
                );

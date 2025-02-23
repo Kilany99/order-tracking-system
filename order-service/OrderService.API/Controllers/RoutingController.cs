@@ -1,5 +1,8 @@
-﻿using Microsoft.AspNet.SignalR;
+﻿using MediatR;
+using Microsoft.AspNet.SignalR;
 using Microsoft.AspNetCore.Mvc;
+using OrderService.Application.Features.Routes.Commands;
+using OrderService.Application.Features.Routes.Queries;
 using OrderService.Infrastructure.Routing.Interfaces;
 
 namespace OrderService.API.Controllers;
@@ -9,32 +12,27 @@ namespace OrderService.API.Controllers;
 [Route("api/[controller]")]
 public class RoutingController : ControllerBase
 {
-    private readonly IRoutingService _routingService;
+    private readonly IMediator _mediator;
     private readonly ILogger<RoutingController> _logger;
 
     public RoutingController(
-        IRoutingService routingService,
+        IMediator mediator,
         ILogger<RoutingController> logger)
     {
-        _routingService = routingService;
+        _mediator = mediator;
         _logger = logger;
     }
 
     [HttpGet("route")]
-    public async Task<IActionResult> GetRoute(
-        [FromQuery] double startLat,
-        [FromQuery] double startLng,
-        [FromQuery] double endLat,
-        [FromQuery] double endLng)
+    public async Task<IActionResult> GetRoute(GetRouteQuery query)
     {
         try
         {
             _logger.LogInformation(
                 "Getting route from ({StartLat}, {StartLng}) to ({EndLat}, {EndLng})",
-                startLat, startLng, endLat, endLng);
+                query.startLat, query.startLng, query.endLat, query.endLng);
 
-            var route = await _routingService.GetRoute(
-                startLat, startLng, endLat, endLng);
+            var route = await _mediator.Send(query);
 
             _logger.LogInformation(
                 "Route found with {Points} points, distance: {Distance}m, duration: {Duration}s",
@@ -52,20 +50,15 @@ public class RoutingController : ControllerBase
     }
 
     [HttpGet("eta")]
-    public async Task<IActionResult> GetETA(
-        [FromQuery] double startLat,
-        [FromQuery] double startLng,
-        [FromQuery] double endLat,
-        [FromQuery] double endLng)
+    public async Task<IActionResult> GetETA(CalculateETACommand command)
     {
         try
         {
             _logger.LogInformation(
                 "Calculating ETA from ({StartLat}, {StartLng}) to ({EndLat}, {EndLng})",
-                startLat, startLng, endLat, endLng);
+                command.startLat, command.startLng, command.endLat, command.endLng);
 
-            var eta = await _routingService.CalculateETA(
-                startLat, startLng, endLat, endLng);
+            var eta = await _mediator.Send(command);
 
             _logger.LogInformation("ETA calculated: {Eta}", eta);
 
