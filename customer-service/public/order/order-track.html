@@ -135,6 +135,129 @@
         .status-4 {
             color: red
         }
+        .assignment-loader {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin: 20px 0;
+        }
+
+        .delivery-animation-container {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 15px;
+            position: relative;
+        }
+        .delivery-icon {
+            width: 60px;
+            height: 60px;
+            background: url('https://img.icons8.com/color/96/000000/delivery--v1.png') no-repeat center center;
+            background-size: contain;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            animation: bounce 1s infinite;
+        }
+
+
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .searching-text {
+            color: #2196F3;
+            font-size: 18px;
+            margin-bottom: 10px;
+            animation: pulse 1.5s infinite;
+        }
+
+        .searching-subtext {
+            color: #666;
+            font-size: 14px;
+        }
+        .tracking-controls form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+    
+
+        #orderId:focus {
+            outline: none;
+            border-color: #2196F3;
+            box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+        }
+
+        #orderId.error {
+            border-color: #dc3545;
+        }
+
+        #trackOrderBtn {
+            padding: 8px 16px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        #trackOrderBtn:hover {
+            background-color: #1976D2;
+        }
+
+        #trackOrderBtn:disabled {
+            background-color: #90CAF9;
+            cursor: not-allowed;
+        }
+        @keyframes bounce {
+          0%, 100% {
+              transform: translate(-50%, -50%) scale(1);
+          }
+          50% {
+              transform: translate(-50%, -60%) scale(1.1);
+          }
+        }
+          .lottie-animation {
+          display: none;
+          margin: 20px auto;
+          text-align: center;
+          align-items: center;
+          max-width: fit-content;
+          }
+
+.status-message {
+    text-align: center;
+    font-size: 24px;
+    color: #2196F3;
+    margin: 20px 0;
+    display: none;
+}
+.cancel-message{
+  text-align: center;
+    font-size: 24px;
+    color: #f32121;
+    margin: 20px 0;
+    display: none;
+}
+
+#enjoyMealMessage {
+    font-size: 28px;
+    color: #28a745;
+    text-align: center;
+    margin: 20px 0;
+    display: none;
+}
+        
+          
     </style>
 </head>
 <body>
@@ -145,11 +268,106 @@
             <h2>Track Your Order</h2>
             
             <div class="tracking-controls">
-                <input type="text" id="orderId" placeholder="Enter Order ID">
-                <button id="trackOrderBtn" class="btn" ">Track Order</button>
-            </div>
-            
+              <form id="trackingForm" onsubmit="return false;">
+                <div style="display: block; max-width: 400px;">
+                  <input type="text" id="orderId" placeholder="Enter Order ID" required>
+                </div>
+                  <div style="display: block; max-width: 400px;">
+                  <button type="submit" id="trackOrderBtn" class="btn" >Track Order</button>
+                  </div>
+                </form>
+          </div>
+     
+        
+        <div id="preparingAnimation" class="lottie-animation">
+            <dotlottie-player
+                src="https://lottie.host/a6168637-8159-4796-8d3a-78cae59f3e51/CnXKAbAGiy.lottie"
+                background="transparent"
+                speed="1"
+                style="width: 300px; height: 300px"
+                loop
+                autoplay
+            ></dotlottie-player>
+        </div>
+        
+      
+        
+        <div id="deliveringAnimation" class="lottie-animation">
+            <dotlottie-player
+                src="https://lottie.host/de9c93b5-bb2d-4828-8090-4b457b35e24c/NgTsWX4Yc5.lottie"
+                background="transparent"
+                speed="1"
+                style="width: 300px; height: 300px"
+                loop
+                autoplay
+            ></dotlottie-player>
+        </div>
+    <!--    
+        <div id="deliveredAnimation" class="lottie-animation">
+            <dotlottie-player
+                src="https://lottie.host/412b8ba5-5e6d-4061-9950-a0be770fce53/oDtdK61H1w.lottie"
+                background="transparent"
+                speed="1"
+                style="width: 300px; height: 300px"
+                loop
+                autoplay
+            ></dotlottie-player>
+        </div>
+        -->
+        <div id="enjoyMealAnimation" class="lottie-animation">
+            <dotlottie-player
+                src="https://lottie.host/e990d0cf-bc71-4517-bbcc-e69c290f2fa7/ND0Ibsc6pS.lottie"
+                background="transparent"
+                speed="1"
+                style="width: 300px; height: 300px"
+                loop
+                autoplay
+            ></dotlottie-player>
+        </div>
+        <div id="cancelledAnimation" class="lottie-animation">
+        <dotlottie-player
+          src="https://lottie.host/5f4543c2-45da-4668-b3c2-513f03f4eb05/32dIHQqwXO.lottie"
+          background="transparent"
+          speed="1"
+          style="width: 300px; height: 300px"
+          loop
+          autoplay
+        ></dotlottie-player>
+        </div>
+        <div id="enjoyMealMessage" class="status-message">
+            Enjoy your meal! 😋
+        </div>
+        <div id="cancelMessage" class="cancel-message">
+          Oops Your Order Is Cancelled! 
+      </div>
             <div id="orderStatus" class="status-card"></div>
+            <div id="assignmentLoader" class="assignment-loader">
+              <div class="delivery-animation-container">
+                  <div class="delivery-icon"></div>
+              </div>
+              <div class="searching-text">Looking for a driver...</div>
+              <div class="searching-subtext">Please hang tight while we find the perfect driver for your order</div>
+          </div>
+          <div id="assigningAnimation" class="lottie-animation">
+            <dotlottie-player
+                src="https://lottie.host/bb33f9f5-8f4b-4c55-8b79-2819334aa683/Fm3kUqHbWj.lottie"
+                background="transparent"
+                speed="1"
+                style="width: 300px; height: 300px"
+                loop
+                autoplay
+            ></dotlottie-player>
+        </div>
+          <div id="createdAnimation" class="lottie-animation">
+            <dotlottie-player
+                src="https://lottie.host/9d1f959a-5321-450b-ba8c-022394b87a59/r5yMMhbTsi.lottie"
+                background="transparent"
+                speed="1"
+                style="width: 50px; height: 50px"
+                loop
+                autoplay
+            ></dotlottie-player>
+        </div>
             <div id="errorMessage" class="error-message"></div>
             <div id="successMessage" class="success-message"></div>
         </div>
@@ -179,6 +397,8 @@
     <script type="module" src="./js/lib/auth-serivce.js"></script>
     <script type="module" src="./js/services/order-service.js"></script>
     <script type="module" src="./js/order-tracking.js"></script>
+    <script src="https://unpkg.com/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs" type="module"></script>
+
     
     <script>
         // Verify SignalR loading
@@ -197,5 +417,6 @@
             document.getElementById('routeInfo').style.display = 'block';
         }
     </script>
+    
 </body>
 </html>

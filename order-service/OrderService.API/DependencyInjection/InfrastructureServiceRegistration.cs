@@ -1,8 +1,6 @@
 ﻿using FluentValidation;
 using MediatR;
-using Microsoft.AspNet.SignalR.Infrastructure;
 using Microsoft.EntityFrameworkCore;
-using OrderService.API.Clients;
 using OrderService.API.Handlers;
 using OrderService.Application.Features.Orders.Commands;
 using OrderService.Application.Features.Orders.Handlers;
@@ -11,6 +9,8 @@ using OrderService.Application.Features.Routes.Commands;
 using OrderService.Application.Features.Routes.Handlers;
 using OrderService.Application.Features.Routes.Queries;
 using OrderService.Application.Responses;
+using OrderService.Domain.Interfaces;
+using OrderService.Infrastructure.Clients;
 using OrderService.Infrastructure.Data;
 using OrderService.Infrastructure.Repositories;
 using OrderService.Infrastructure.Routing.Interfaces;
@@ -44,6 +44,7 @@ public static class InfrastructureServiceRegistration
         })
         .AddHttpMessageHandler<ServiceAuthenticationHandler>();
         services.AddTransient<ServiceAuthenticationHandler>();
+        services.AddScoped<IOrderUpdateService, OrderUpdateService>();
 
 
         services.AddHttpClient<IRoutingService, OSRMRoutingService>();

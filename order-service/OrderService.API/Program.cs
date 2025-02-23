@@ -7,7 +7,6 @@ using Microsoft.OpenApi.Models;
 using OrderService.API.Consumers;
 using OrderService.API.DependencyInjection;
 using OrderService.API.Helpers;
-using OrderService.API.Hubs;
 using OrderService.API.Middleware;
 using OrderService.API.Models;
 using OrderService.Domain.Entities;
@@ -20,6 +19,7 @@ using StackExchange.Redis;
 using OrderService.Infrastructure.Producers;
 using OrderService.Infrastructure.Serialization;
 using OrderService.API.HealthCheck;
+using OrderService.Infrastructure.Hubs;
 
 
 var builder = WebApplication.CreateBuilder(args);

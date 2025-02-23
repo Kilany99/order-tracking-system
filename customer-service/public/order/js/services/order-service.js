@@ -14,6 +14,13 @@ const PACKAGE_ICON = L.icon({
   popupAnchor: [0, -32]
 });
 
+const PREPARING_ICON = L.icon({
+  iconUrl: 'https://lottie.host/a6168637-8159-4796-8d3a-78cae59f3e51/CnXKAbAGiy.lottie',
+  iconSize: [50, 50],
+  iconAnchor: [16, 32],
+  popupAnchor: [0, -32]
+});
+
 export class OrderService {
   constructor(baseUrl) {
     this.baseUrl = baseUrl;
@@ -182,10 +189,17 @@ export class OrderService {
   }
 
   async trackOrder(orderId) {
-    return this._secureRequest(
-      `${this.baseUrl}/api/orders/${orderId}`,
-      { method: 'GET' }
-    );
+    if (!orderId) {
+      throw new Error('Order ID is required');
+   }
+   try {
+        return this._secureRequest(
+          `${this.baseUrl}/api/orders/${orderId}`,
+          { method: 'GET' }
+        );
+   }catch (error) {
+    throw new Error(`Failed to track order: ${error.message}`);
+}
   }
 
   async placeOrder(orderData) {
@@ -274,6 +288,12 @@ export class OrderService {
           this.handleDriverLocationUpdate(data.lat, data.lng);
         }
       });
+      this.connection.on("OrderStatusUpdated", (data) => {
+        updateOrderDisplay(data);
+        if (data.status !== 0) { // If status is not Created
+            $("#assignmentLoader").hide();
+        }
+    });
 
       this.connection.onclose(async error => {
         if (error) {

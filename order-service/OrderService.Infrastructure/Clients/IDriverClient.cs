@@ -1,13 +1,12 @@
-﻿using OrderService.Application.Responses;
+﻿using Microsoft.Extensions.Logging;
 using OrderService.Domain.Entities;
 using OrderService.Infrastructure.Services;
-using RestSharp.Extensions;
 using System.Collections.Concurrent;
 using System.Net.Http;
+using System.Net.Http.Json;
 using System.Text.Json;
-using System.Threading.Tasks;
 
-namespace OrderService.API.Clients
+namespace OrderService.Infrastructure.Clients
 {
     public interface IDriverClient
     {

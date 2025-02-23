@@ -1,14 +1,17 @@
 ﻿using Microsoft.AspNetCore.SignalR;
-using OrderService.API.Clients;
+using Microsoft.Extensions.Logging;
+using OrderService.Domain.Entities;
+using OrderService.Infrastructure.Clients;
 using OrderService.Infrastructure.Services;
 
-namespace OrderService.API.Hubs
+namespace OrderService.Infrastructure.Hubs
 {
     public class TrackingHub : Hub
     {
         private readonly ICustomConnectionManager _connectionManager;
         private readonly IDriverClient _driverLocationService;
         private readonly ILogger<TrackingHub> _logger;
+        private readonly IHubContext<TrackingHub> _hubContext;
 
         public TrackingHub(ICustomConnectionManager connectionManager, IDriverClient driverLocationService, ILogger<TrackingHub> logger)
         {
@@ -50,6 +53,7 @@ namespace OrderService.API.Hubs
             }
         }
 
+
         
         public async Task UpdateDriverPosition(double lat, double lng)
         {
@@ -60,7 +64,16 @@ namespace OrderService.API.Hubs
                 await Clients.Group(driverId).SendAsync("PositionUpdated", lat, lng);
             }
         }
-
+        public async Task SendOrderStatusUpdate(Guid orderId, OrderStatus status, Guid? driverId = null)
+        {
+            await Clients.Group(orderId.ToString()).SendAsync("OrderStatusUpdated", new
+            {
+                orderId = orderId,
+                status = (int)status,
+                driverId = driverId,
+                timestamp = DateTime.UtcNow
+            });
+        }
         public override async Task OnDisconnectedAsync(Exception exception)
         {
             var orderId = _connectionManager.GetOrderId(Context.ConnectionId);

@@ -1,14 +1,15 @@
 ﻿using Confluent.Kafka;
 using Microsoft.AspNetCore.SignalR;
-using OrderService.API.Clients;
-using OrderService.API.Hubs;
+
 using OrderService.API.Models;
+using OrderService.Domain.Entities;
+using OrderService.Domain.Interfaces;
+using OrderService.Infrastructure.Clients;
+using OrderService.Infrastructure.Hubs;
 using OrderService.Infrastructure.Repositories;
 using OrderService.Infrastructure.Serialization;
 using OrderService.Infrastructure.Services;
-using RestSharp.Extensions;
 using System.Threading.Channels;
-using static Confluent.Kafka.ConfigPropertyNames;
 
 namespace OrderService.API.Consumers;
 public class KafkaConsumerService : BackgroundService
@@ -17,7 +18,7 @@ public class KafkaConsumerService : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IConfiguration _configuration;
     private readonly CancellationTokenSource _stoppingCts;
-    private readonly Channel<OrderCreatedEvent> _orderChannel;
+    private readonly Channel<Models.OrderCreatedEvent> _orderChannel;
     private readonly Channel<DriverLocationEvent> _locationChannel;
     private readonly IProducer<string,OrderAssignmentFailedEvent> _failProducer;
     public KafkaConsumerService(
@@ -29,7 +30,7 @@ public class KafkaConsumerService : BackgroundService
         _scopeFactory = scopeFactory;
         _configuration = configuration;
         _stoppingCts = new CancellationTokenSource();
-        _orderChannel = Channel.CreateUnbounded<OrderCreatedEvent>();
+        _orderChannel = Channel.CreateUnbounded<Models.OrderCreatedEvent>();
         _locationChannel = Channel.CreateUnbounded<DriverLocationEvent>();
         var producerConfig = new ProducerConfig
         {
@@ -89,8 +90,8 @@ public class KafkaConsumerService : BackgroundService
 
         try
         {
-            using var consumer = new ConsumerBuilder<string, OrderCreatedEvent>(config)
-                .SetValueDeserializer(new JsonDeserializer<OrderCreatedEvent>())
+            using var consumer = new ConsumerBuilder<string, Models.OrderCreatedEvent>(config)
+                .SetValueDeserializer(new JsonDeserializer<Models.OrderCreatedEvent>())
                 .Build();
 
             var topic = _configuration["Kafka:OrderCreated"];
@@ -196,6 +197,7 @@ public class KafkaConsumerService : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var driverClient = scope.ServiceProvider.GetRequiredService<IDriverClient>();
         var producer = scope.ServiceProvider.GetRequiredService<IProducer<string, DriverAssignedEvent>>();
+        var orderUpdateService = scope.ServiceProvider.GetRequiredService<IOrderUpdateService>();
         Exception? lastError = null;
         var orderRepository = scope.ServiceProvider.GetRequiredService<IOrderRepository>();
 
@@ -204,6 +206,11 @@ public class KafkaConsumerService : BackgroundService
             try
             {
                 _logger.LogInformation("Processing order {OrderId}", orderEvent.OrderId);
+
+                // Send initial status update
+                await orderUpdateService.SendOrderStatusUpdate(
+                    orderEvent.OrderId,
+                    OrderStatus.Created);
 
                 // Implementing a retry mechanisim with exponential backoff until assign a driver to the order
                 int retryCount = 0;
@@ -234,7 +241,7 @@ public class KafkaConsumerService : BackgroundService
                 {
                     _logger.LogError("Permanent failure assigning driver to order {OrderId} after {MaxRetries} attempts",
                         orderEvent.OrderId, maxRetryAttempts);
-                    await OnAssignmentFailure(orderEvent, lastError, orderRepository, stoppingToken);
+                    await OnAssignmentFailure(orderEvent, lastError, orderRepository,orderUpdateService, stoppingToken);
                      continue;
                 }
                 var order = await orderRepository.GetByIdAsync(orderEvent.OrderId);
@@ -247,6 +254,11 @@ public class KafkaConsumerService : BackgroundService
                 order.DriverId = driverId;
                 order.MarkAsPreparing();
                 await orderRepository.SaveChangesAsync();
+                // Send preparing status with driver ID
+                await orderUpdateService.SendOrderStatusUpdate(
+                    orderEvent.OrderId,
+                    OrderStatus.Preparing,
+                    driverId);
                 _logger.LogInformation("Order {OrderId} info has been updated with the driverId {driverId} ", orderEvent.OrderId, driverId);
 
                 await producer.ProduceAsync("drivers-assigned", new Message<string, DriverAssignedEvent>
@@ -266,8 +278,8 @@ public class KafkaConsumerService : BackgroundService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Critical error processing order {OrderId}", orderEvent.OrderId);
-                await OnAssignmentFailure(orderEvent, ex,orderRepository,stoppingToken);
-              
+                await OnAssignmentFailure(orderEvent, lastError, orderRepository, orderUpdateService, stoppingToken);
+
             }
         }
     }
@@ -332,7 +344,8 @@ public class KafkaConsumerService : BackgroundService
             }
         }
     }
-    private async Task OnAssignmentFailure(OrderCreatedEvent orderEvent,Exception? lastError,IOrderRepository orderRepository, CancellationToken stoppingToken)
+    private async Task OnAssignmentFailure(Models.OrderCreatedEvent orderEvent,Exception? lastError,
+        IOrderRepository orderRepository, IOrderUpdateService orderUpdateService, CancellationToken stoppingToken)
     {
 
         _logger.LogInformation("Producing OrderAssignFaild event...");
@@ -346,6 +359,9 @@ public class KafkaConsumerService : BackgroundService
                 FailedAt: DateTime.UtcNow
             )
         }, stoppingToken);
+        await orderUpdateService.SendOrderStatusUpdate(
+                     orderEvent.OrderId,
+                     OrderStatus.Cancelled);
         _logger.LogInformation("Canceling order with Id {orderId}...", orderEvent.OrderId);
         // Cancel the Order
         var orderToBeCanclled = await orderRepository.GetByIdAsync(orderEvent.OrderId);
