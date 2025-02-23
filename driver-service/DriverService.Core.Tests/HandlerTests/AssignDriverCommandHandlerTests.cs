@@ -1,5 +1,4 @@
-﻿
-using DriverService.Core.Features.Driver.Commands;
+﻿using DriverService.Core.Features.Driver.Commands;
 using DriverService.Core.Features.Driver.Handlers;
 using DriverService.Domain.Entities;
 using DriverService.Domain.Exceptions;
@@ -8,7 +7,7 @@ using DriverService.Infrastructure.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
 
-namespace DriverService.Core.Tests;
+namespace DriverService.Core.Tests.HandlerTests;
 
 
 public class AssignDriverCommandHandlerTests
@@ -419,7 +418,7 @@ public class AssignDriverCommandHandlerTests
 
 
     // Custom Exceptions
-    public class DriverNotAvailableException : Exception
+    private class DriverNotAvailableException : Exception
     {
         public DriverNotAvailableException(Guid driverId)
             : base($"Driver {driverId} is not available for assignment")
@@ -427,7 +426,7 @@ public class AssignDriverCommandHandlerTests
         }
     }
 
-    public class DriverNotFoundException : Exception
+    private class DriverNotFoundException : Exception
     {
         public DriverNotFoundException(Guid driverId)
             : base($"Driver {driverId} not found")

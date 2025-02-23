@@ -107,7 +107,7 @@ namespace DriverService.Infrastructure.Repositories
             if (!drivers.Any())
             {
                 _logger.LogError("No available drivers found.");
-                return null;
+                throw new NoAvailableDriversException();
             }
 
             var nearestDriver = drivers
