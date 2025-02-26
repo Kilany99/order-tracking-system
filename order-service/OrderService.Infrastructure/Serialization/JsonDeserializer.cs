@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using OrderService.Domain.Models;
 
 namespace OrderService.Infrastructure.Serialization;
+
 public class JsonDeserializer<T> : IDeserializer<T>
 {
     private readonly JsonSerializerOptions _options;

@@ -20,6 +20,8 @@ using OrderService.Infrastructure.Serialization;
 using OrderService.API.HealthCheck;
 using OrderService.Infrastructure.Hubs;
 using OrderService.Domain.Models;
+using Microsoft.AspNetCore.Authentication;
+using OrderService.Infrastructure.Auth;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -75,7 +77,7 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddScoped<JwtTokenHelper>();
 builder.Services.AddApplication();  // Extension method to register MediatR, FluentValidation
 builder.Services.AddInfrastructure(builder.Configuration);
-
+builder.Services.AddScoped<ServiceAuthenticationHandler>();
 builder.Services.AddSingleton<IOrderCreatedProducer, OrderCreatedProducer>();
 //builder.Services.AddHostedService<OrderAssignmentConsumer>();
 //builder.Services.AddHostedService<DriverLocationConsumer>();
@@ -184,7 +186,17 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]))
     };
+}).AddScheme<AuthenticationSchemeOptions, ServiceAuthenticationHandler>(
+            "ServiceAuthentication", opts => { });
+// Add Authorization
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("ServicePolicy", policy =>
+        policy.RequireAuthenticatedUser()
+             .AddAuthenticationSchemes("ServiceAuthentication")
+             .RequireRole("Service"));
 });
+
 
 builder.Host.UseSerilog((context, config) =>
 {

@@ -136,6 +136,29 @@ services:
       - my-network  
 
 
+
+  notification-service:
+      build:
+        context: ./notification-service
+        dockerfile: Dockerfile
+      depends_on:
+        postgres:
+          condition: service_healthy
+        kafka:
+          condition: service_healthy
+      environment:
+        ConnectionStrings__Postgres: "Host=postgres;Database=notifications;Username=postgres;Password=1999King"
+        Kafka__BootstrapServers: "kafka:9092"
+        Email__SmtpServer: "smtp.gmail.com"
+        Email__SmtpPort: "587"
+        Email__Username: "arrow9307502abdallah@gmail.com"
+        Email__Password: "htee idww ldns zldk"
+      ports:
+      - "8050:80"
+      networks:
+        - my-network
+
+
 networks:
   my-network:  
     driver: bridge

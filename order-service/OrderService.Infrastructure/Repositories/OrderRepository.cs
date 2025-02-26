@@ -22,7 +22,10 @@ public interface IOrderRepository
     Task<IEnumerable<Order>> GetOrdersWithPendingAssignmentAsync();
     Task UpdateOrderAssignmentAttemptAsync(Guid orderId, int retryCount, DateTime nextAttemptTime);
     Task<(int RetryCount, DateTime LastAttemptTime)?> GetOrderAssignmentAttemptsAsync(Guid orderId);
+
+
 }
+
 
 
 public class OrderRepository : IOrderRepository
@@ -176,6 +179,7 @@ public class OrderRepository : IOrderRepository
 
         return (order.AssignmentRetryCount, order.LastAssignmentAttempt.Value);
     }
+
 
     public async Task<bool> SaveChangesAsync()
     {
