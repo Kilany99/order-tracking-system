@@ -4,7 +4,7 @@ using System.Threading.Channels;
 
 namespace OrderService.Infrastructure.Channels;
 
-public class OrderProcessingChannel : IOrderProcessingChannel
+public class OrderProcessingChannel : IOrderProcessingChannel<OrderCreatedEvent>
 {
     private readonly Channel<OrderCreatedEvent> _channel;
 

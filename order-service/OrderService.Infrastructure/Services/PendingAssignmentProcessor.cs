@@ -10,23 +10,14 @@ using System.Threading.Channels;
 
 namespace OrderService.Infrastructure.Services;
 
-public class PendingAssignmentProcessor : BackgroundService
+public class PendingAssignmentProcessor(
+    IServiceScopeFactory scopeFactory,
+    ILogger<PendingAssignmentProcessor> logger,
+    IOrderProcessingChannel<OrderCreatedEvent> orderChannel) : BackgroundService
 {
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly ILogger<PendingAssignmentProcessor> _logger;
-    private readonly IOrderProcessingChannel _orderChannel;
-
-    public PendingAssignmentProcessor(
-        IServiceScopeFactory scopeFactory,
-        ILogger<PendingAssignmentProcessor> logger,
-        IOrderProcessingChannel orderChannel)
-    {
-        _scopeFactory = scopeFactory;
-        _logger = logger;
-        _orderChannel = orderChannel;
-
-
-    }
+    private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
+    private readonly ILogger<PendingAssignmentProcessor> _logger = logger;
+    private readonly IOrderProcessingChannel<OrderCreatedEvent> _orderChannel = orderChannel;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -65,5 +56,15 @@ public class PendingAssignmentProcessor : BackgroundService
 
             await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
         }
+    }
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Stopping PendingAssignmentProcessor...");
+        await base.StopAsync(cancellationToken);
+    }
+
+    public override void Dispose()
+    {
+        base.Dispose();
     }
 }

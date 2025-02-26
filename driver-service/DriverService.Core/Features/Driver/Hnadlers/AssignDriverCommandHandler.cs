@@ -48,7 +48,8 @@ namespace DriverService.Core.Features.Driver.Handlers
                 try
                 {
                     var assignedDriver = await _repository.AssignDriverAsync(driver.Id, request.OrderId);
-
+                    assignedDriver.AcceptOrder(request.OrderId);
+                    await _repository.SaveChangesAsync();
                     await _kafkaProducer.ProduceDriverAssignedEvent(
                         request.OrderId,
                         assignedDriver.Id,

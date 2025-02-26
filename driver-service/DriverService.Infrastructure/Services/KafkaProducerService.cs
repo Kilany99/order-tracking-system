@@ -8,6 +8,7 @@ using DnsClient.Internal;
 using System.Text;
 using System.Text.Json;
 using DriverService.Domain.Serialization;
+using NetTopologySuite.Utilities;
 namespace DriverService.Infrastructure.Services;
 
 public  interface IKafkaProducerService
@@ -15,6 +16,10 @@ public  interface IKafkaProducerService
     Task ProduceLocationUpdateAsync(Guid driverId, double lat, double lon);
     Task ProduceAssignmentFailedEvent(Guid orderId, string reason);
     Task ProduceDriverAssignedEvent(Guid orderId, Guid driverId,string driverName);
+    Task ProduceOrderPickedUpEvent(Guid orderId, Guid driverId, string driverName);
+    Task ProduceOrderDeliveredEvent(Guid orderId, Guid driverId);
+
+
 }
 public class KafkaProducerService : IKafkaProducerService, IDisposable
 {
@@ -25,6 +30,10 @@ public class KafkaProducerService : IKafkaProducerService, IDisposable
     private readonly ILogger<KafkaProducerService> _logger;
     private readonly IProducer<string, DriverAssignedEvent> _driverAssignedProducer;
     private readonly IProducer<string, OrderAssignmentFailedEvent> _assignmentFailedProducer;
+    private readonly IProducer<string, OrderDeliveredEvent> _deliveredProducer;
+    private readonly IProducer<string, OrderPickedUpEvent> _orderPickedUpProducer;
+    private readonly string _orderPickedUpTopic;
+    private readonly string _orderDeliveredTopic;
     public KafkaProducerService(
         IConfiguration config,
         ILogger<KafkaProducerService> logger)
@@ -52,17 +61,27 @@ public class KafkaProducerService : IKafkaProducerService, IDisposable
                 _logger.LogInformation($"Kafka log: {message.Message}"))
             .Build();
         _driverAssignedProducer = new ProducerBuilder<string, DriverAssignedEvent>(producerConfig)
-              .SetValueSerializer(new JsonSerializer<DriverAssignedEvent>())
-              .Build();
+            .SetValueSerializer(new JsonSerializer<DriverAssignedEvent>())
+            .Build();
 
         _assignmentFailedProducer = new ProducerBuilder<string, OrderAssignmentFailedEvent>(producerConfig)
             .SetValueSerializer(new JsonSerializer<OrderAssignmentFailedEvent>())
             .Build();
 
+        _orderPickedUpProducer = new ProducerBuilder<string, OrderPickedUpEvent>(producerConfig)
+          .SetValueSerializer(new JsonSerializer<OrderPickedUpEvent>())
+          .Build();
+        _deliveredProducer = new ProducerBuilder<string, OrderDeliveredEvent>(producerConfig)
+            .SetValueSerializer(new JsonSerializer<OrderDeliveredEvent>())
+            .Build();
+
+
         // Read topics from configuration
         _locationTopic = config["Kafka:Topic"];               
         _driverAssignedTopic = config["Kafka:DriverAssigned"];  
-        _assignmentFailedTopic = config["Kafka:AssignmentFailed"]; 
+        _assignmentFailedTopic = config["Kafka:AssignmentFailed"];
+        _orderPickedUpTopic = config["Kafka:OrderPickedUp"];
+        _orderDeliveredTopic = config["Kafka:OrderDelivered"];
     }
 
     public async Task ProduceLocationUpdateAsync(
@@ -131,11 +150,66 @@ public class KafkaProducerService : IKafkaProducerService, IDisposable
         }
     }
 
+    public async Task ProduceOrderPickedUpEvent(Guid orderId, Guid driverId, string driverName)
+    {
+        try
+        {
+            _logger.LogInformation("Publishing order pickup event for order {OrderId}", orderId);
+
+            await _orderPickedUpProducer.ProduceAsync(
+                _orderPickedUpTopic,
+                new Message<string, OrderPickedUpEvent>
+                {
+                    Key = orderId.ToString(),
+                    Value = new OrderPickedUpEvent(
+                        orderId,
+                        driverId,
+                        driverName,
+                        DateTime.UtcNow
+                    )
+                });
+
+            _logger.LogInformation("Successfully published order pickup event for order {OrderId}", orderId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to publish order pickup event for order {OrderId}", orderId);
+            throw;
+        }
+    }
+    public async Task ProduceOrderDeliveredEvent(Guid orderId, Guid driverId)
+    {
+        try
+        {
+            _logger.LogInformation("Publishing order delivered event for order {OrderId}", orderId);
+
+            await _deliveredProducer.ProduceAsync(
+                _orderDeliveredTopic,
+                new Message<string, OrderDeliveredEvent>
+                {
+                    Key = orderId.ToString(),
+                    Value = new OrderDeliveredEvent(
+                        orderId,
+                        driverId,
+                        DateTime.UtcNow
+                    )
+                });
+
+            _logger.LogInformation("Successfully published order delivered event for order {OrderId}", orderId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to publish order delivered event for order {OrderId}", orderId);
+            throw;
+        }
+
+    }
     public void Dispose()
     {
         _driverAssignedProducer.Flush(TimeSpan.FromSeconds(5));
         _driverAssignedProducer.Dispose();
         _assignmentFailedProducer.Dispose();
+        _orderPickedUpProducer.Dispose();
         _producer?.Dispose();
 
     }

@@ -57,6 +57,8 @@ namespace DriverService.API.DependencyInjection
             services.AddScoped<IRequestHandler<GetActiveOrdersByDriverQuery, DriverOrderResponse>, GetActiveOrdersByDriverQueryHandler>();
             services.AddScoped<IRequestHandler<CheckDriverAvailabilityQuery, bool>, CheckDriverAvailabilityQueryHandler>();
             services.AddScoped<IRequestHandler<GetDriverByOrderIdQuery,DriverResponse>,GetDriverByOrderIdQueryHandler>();
+            services.AddScoped<IRequestHandler<OrderPickupCommand,Unit>, OrderPickupCommandHandler>();
+            services.AddScoped<IRequestHandler<OrderDeliveredCommand, Unit>, OrderDeliveredCommandHandler>();
 
             return services;
         }

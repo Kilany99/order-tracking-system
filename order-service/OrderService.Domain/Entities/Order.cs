@@ -57,6 +57,7 @@ public class Order : Entity<Guid>
     public void MarkAsPreparing() => Status = OrderStatus.Preparing;
 
     public void MarkAsCancelled() => Status = OrderStatus.Cancelled;
+    public void MarkAsDelivered() => Status = OrderStatus.Delivered;
     public void SetDriverId(Guid driverId) => DriverId = driverId;
 
     public bool NeedsRetry(Order order, DateTime currentTime) => order.Status == OrderStatus.Created &&

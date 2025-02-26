@@ -30,7 +30,7 @@ public class Driver
         if (Status != DriverStatus.Available)
             throw new DriverDomainException("Driver not available");
 
-        Status = DriverStatus.InDelivery;
+        Status = DriverStatus.Assigned;
         CurrentOrderId = orderId;
     }
 

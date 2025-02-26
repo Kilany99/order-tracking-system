@@ -52,7 +52,11 @@ public static class InfrastructureServiceRegistration
         services.AddHttpClient<IRoutingService, OSRMRoutingService>();
         services.AddMemoryCache();
         services.AddScoped<IRoutingService, OSRMRoutingService>();
-        services.AddSingleton<IOrderProcessingChannel, OrderProcessingChannel>();
+        services.AddSingleton<IOrderProcessingChannel<OrderCreatedEvent>, OrderProcessingChannel>();
+        services.AddSingleton<IOrderProcessingChannel<DriverLocationEvent>, LocationProcessingChannel>();
+        services.AddSingleton<IOrderProcessingChannel<OrderPickedUpEvent>, OrderPickupProcessingChannel>();
+        services.AddSingleton<IOrderProcessingChannel<OrderDeliveredEvent>, OrderDeliveredProcessingChannel>();
+
 
         services.AddHostedService<PendingAssignmentProcessor>();
 

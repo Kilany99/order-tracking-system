@@ -30,3 +30,16 @@ public class OrderAssignmentFailedEvent
         Timestamp = timestamp;
     }
 }
+
+public record OrderPickedUpEvent(
+    Guid OrderId,
+    Guid DriverId,
+    string DriverName,
+    DateTime PickupTime
+);
+
+public record OrderDeliveredEvent(
+    Guid OrderId,
+    Guid DriverId,
+    DateTime DeliveryTime
+    );

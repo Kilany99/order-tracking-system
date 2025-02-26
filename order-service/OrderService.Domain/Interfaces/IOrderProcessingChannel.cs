@@ -3,8 +3,8 @@ using System.Threading.Channels;
 
 namespace OrderService.Domain.Interfaces;
 
-public interface IOrderProcessingChannel
+public interface IOrderProcessingChannel<T> where T : class
 {
-    ChannelWriter<OrderCreatedEvent> Writer { get; }
-    ChannelReader<OrderCreatedEvent> Reader { get; }
+    ChannelWriter<T> Writer { get; }
+    ChannelReader<T> Reader { get; }
 }

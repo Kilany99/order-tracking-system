@@ -196,4 +196,36 @@ public class DriversController : ControllerBase
             return StatusCode(500, $"Error getting driver for the send order ID: {orderId}");
         }
     }
+
+    [Authorize(Policy = "DriverPolicy")]
+    [HttpPost("mark-as-out-for-delivery")]
+    public async Task<IActionResult> MarkAsOutForDelivey(OrderPickupCommand command)
+    {
+        try
+        {
+            await _mediator.Send(command);
+            return Ok(new { message = "Order pickup registered successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("An error occured during marking as out for delivery ex: {ex}", ex.Message);
+            return StatusCode(500, "An error occured during marking as out for delivery");
+        }
+    }
+
+    [Authorize(Policy = "DriverPolicy")]
+    [HttpPost("mark-as-delivered")]
+    public async Task<IActionResult> MarkOrderAsDelivered(OrderDeliveredCommand command)
+    {
+        try
+        {
+            await _mediator.Send(command);
+            return Ok(new { message = "Order delivered registered successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("An error occured during marking as delivered ex: {ex}", ex.Message);
+            return StatusCode(500, "An error occured during marking as delivered");
+        }
+    }
 }

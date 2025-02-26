@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.SignalR;
 using OrderService.Domain.Entities;
 using OrderService.Domain.Interfaces;
 using OrderService.Domain.Models;
+using OrderService.Infrastructure.Channels;
 using OrderService.Infrastructure.Clients;
 using OrderService.Infrastructure.Hubs;
 using OrderService.Infrastructure.Repositories;
@@ -18,21 +19,29 @@ public class KafkaConsumerService : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IConfiguration _configuration;
     private readonly CancellationTokenSource _stoppingCts;
-    private readonly IOrderProcessingChannel _orderChannel;
-    private readonly Channel<DriverLocationEvent> _locationChannel;
+    private readonly IOrderProcessingChannel<OrderCreatedEvent> _orderChannel;
+    private readonly IOrderProcessingChannel<DriverLocationEvent> _locationChannel;
+    private readonly IOrderProcessingChannel<OrderPickedUpEvent> _pickupChannel;
+    private readonly IOrderProcessingChannel<OrderDeliveredEvent> _deliveredchannel;
+
     private readonly IProducer<string,OrderAssignmentFailedEvent> _failProducer;
     public KafkaConsumerService(
         ILogger<KafkaConsumerService> logger,
         IServiceScopeFactory scopeFactory,
         IConfiguration configuration,
-        IOrderProcessingChannel processingChannel)
+        IOrderProcessingChannel<OrderCreatedEvent> orderCreatedChannel,
+        IOrderProcessingChannel<OrderPickedUpEvent> pickupChannel,
+        IOrderProcessingChannel<DriverLocationEvent> locationChannel,
+        IOrderProcessingChannel<OrderDeliveredEvent> deliveredchannel)
     {
         _logger = logger;
         _scopeFactory = scopeFactory;
         _configuration = configuration;
         _stoppingCts = new CancellationTokenSource();
-        _orderChannel = processingChannel;
-        _locationChannel = Channel.CreateUnbounded<DriverLocationEvent>();
+        _orderChannel = orderCreatedChannel;
+        _pickupChannel = pickupChannel;
+        _locationChannel = locationChannel;
+        _deliveredchannel = deliveredchannel;
         var producerConfig = new ProducerConfig
         {
             BootstrapServers = configuration["kafka:BootstrapServers"],
@@ -58,7 +67,12 @@ public class KafkaConsumerService : BackgroundService
                 Task.Run(() => ConsumeOrderMessages(stoppingToken), stoppingToken),
                 Task.Run(() => ConsumeLocationMessages(stoppingToken), stoppingToken),
                 Task.Run(() => ProcessOrderMessages(stoppingToken), stoppingToken),
-                Task.Run(() => ProcessLocationMessages(stoppingToken), stoppingToken)
+                Task.Run(() => ProcessLocationMessages(stoppingToken), stoppingToken),
+                Task.Run(() => ConsumeOrderPickupMessages(stoppingToken), stoppingToken),
+                Task.Run(() => ProcessOrderPickupMessages(stoppingToken), stoppingToken),
+                Task.Run(() => ConsumeOrderDeliveredMessages(stoppingToken), stoppingToken),
+                Task.Run(() => ProcessOrderDeliveredMessages(stoppingToken), stoppingToken),
+
             };
 
             // Wait for any task to complete (or fail)
@@ -401,6 +415,169 @@ public class KafkaConsumerService : BackgroundService
 
 
     }
+
+
+    private async Task ConsumeOrderPickupMessages(CancellationToken stoppingToken)
+    {
+        var config = new ConsumerConfig
+        {
+            BootstrapServers = _configuration["Kafka:BootstrapServers"],
+            GroupId = $"{_configuration["Kafka:GroupId"]}-pickups",
+            AutoOffsetReset = AutoOffsetReset.Earliest,
+            EnableAutoCommit = false
+        };
+
+        try
+        {
+            using var consumer = new ConsumerBuilder<string, OrderPickedUpEvent>(config)
+                .SetValueDeserializer(new JsonDeserializer<OrderPickedUpEvent>())
+                .Build();
+
+            var topic = _configuration["Kafka:OrderPickedUp"];
+            consumer.Subscribe(topic);
+            _logger.LogInformation("Order pickup consumer started for topic: {Topic}", topic);
+
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                try
+                {
+                    var result = consumer.Consume(TimeSpan.FromMilliseconds(100));
+                    if (result?.Message?.Value == null) continue;
+
+                    await _pickupChannel.Writer.WriteAsync(result.Message.Value, stoppingToken);
+                    consumer.Commit(result);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    _logger.LogError(ex, "Error consuming order pickup message");
+                    await Task.Delay(1000, stoppingToken);
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Order pickup consumer stopping");
+        }
+    }
+
+    private async Task ProcessOrderPickupMessages(CancellationToken stoppingToken)
+    {
+        await foreach (var pickupEvent in _pickupChannel.Reader.ReadAllAsync(stoppingToken))
+        {
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var orderRepository = scope.ServiceProvider.GetRequiredService<IOrderRepository>();
+                var orderUpdateService = scope.ServiceProvider.GetRequiredService<IOrderUpdateService>();
+
+                var order = await orderRepository.GetByIdAsync(pickupEvent.OrderId);
+                if (order == null)
+                {
+                    _logger.LogWarning("Order {OrderId} not found for pickup event", pickupEvent.OrderId);
+                    continue;
+                }
+
+                order.MarkAsDelivered();
+                await orderRepository.SaveChangesAsync();
+
+                await orderUpdateService.SendOrderStatusUpdate(
+                    pickupEvent.OrderId,
+                    OrderStatus.Delivered,
+                    pickupEvent.DriverId);
+
+                _logger.LogInformation(
+                    "Order {OrderId} marked as out for delivery by driver {DriverId}",
+                    pickupEvent.OrderId,
+                    pickupEvent.DriverId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing pickup event for order {OrderId}", pickupEvent.OrderId);
+            }
+        }
+    }
+
+
+    private async Task ConsumeOrderDeliveredMessages(CancellationToken stoppingToken)
+    {
+        var config = new ConsumerConfig
+        {
+            BootstrapServers = _configuration["Kafka:BootstrapServers"],
+            GroupId = $"{_configuration["Kafka:GroupId"]}-deliveries",
+            AutoOffsetReset = AutoOffsetReset.Earliest,
+            EnableAutoCommit = false
+        };
+
+        try
+        {
+            using var consumer = new ConsumerBuilder<string, OrderDeliveredEvent>(config)
+                .SetValueDeserializer(new JsonDeserializer<OrderDeliveredEvent>())
+                .Build();
+
+            var topic = _configuration["Kafka:OrderDelivered"];
+            consumer.Subscribe(topic);
+            _logger.LogInformation("Order delivered consumer started for topic: {Topic}", topic);
+
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                try
+                {
+                    var result = consumer.Consume(TimeSpan.FromMilliseconds(100));
+                    if (result?.Message?.Value == null) continue;
+
+                    await _deliveredchannel.Writer.WriteAsync(result.Message.Value, stoppingToken);
+                    consumer.Commit(result);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    _logger.LogError(ex, "Error consuming order delivered message");
+                    await Task.Delay(1000, stoppingToken);
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Order delivered consumer stopping");
+        }
+    }
+
+    private async Task ProcessOrderDeliveredMessages(CancellationToken stoppingToken)
+    {
+        await foreach (var deliveredEvent in _deliveredchannel.Reader.ReadAllAsync(stoppingToken))
+        {
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var orderRepository = scope.ServiceProvider.GetRequiredService<IOrderRepository>();
+                var orderUpdateService = scope.ServiceProvider.GetRequiredService<IOrderUpdateService>();
+
+                var order = await orderRepository.GetByIdAsync(deliveredEvent.OrderId);
+                if (order == null)
+                {
+                    _logger.LogWarning("Order {OrderId} not found for delivered event", deliveredEvent.OrderId);
+                    continue;
+                }
+
+                order.MarkAsDelivered();
+                await orderRepository.SaveChangesAsync();
+
+                await orderUpdateService.SendOrderStatusUpdate(
+                    deliveredEvent.OrderId,
+                    OrderStatus.Delivered,
+                    deliveredEvent.DriverId);
+
+                _logger.LogInformation(
+                    "Order {OrderId} delivered by driver {DriverId}",
+                    deliveredEvent.OrderId,
+                    deliveredEvent.DriverId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing delivered event for order {OrderId}", deliveredEvent.OrderId);
+            }
+        }
+    }
+
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Stopping Kafka consumers...");
