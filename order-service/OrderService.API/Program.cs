@@ -8,7 +8,6 @@ using OrderService.API.Consumers;
 using OrderService.API.DependencyInjection;
 using OrderService.API.Helpers;
 using OrderService.API.Middleware;
-using OrderService.API.Models;
 using OrderService.Domain.Entities;
 using OrderService.Infrastructure.Data;
 using Serilog;
@@ -20,6 +19,7 @@ using OrderService.Infrastructure.Producers;
 using OrderService.Infrastructure.Serialization;
 using OrderService.API.HealthCheck;
 using OrderService.Infrastructure.Hubs;
+using OrderService.Domain.Models;
 
 
 var builder = WebApplication.CreateBuilder(args);

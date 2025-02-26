@@ -12,8 +12,8 @@ using OrderService.Infrastructure.Data;
 namespace OrderService.Infrastructure.Migrations
 {
     [DbContext(typeof(OrderDbContext))]
-    [Migration("20250220114359_updateSchema")]
-    partial class updateSchema
+    [Migration("20250226042533_updatedSchema")]
+    partial class updatedSchema
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -234,6 +234,9 @@ namespace OrderService.Infrastructure.Migrations
                     b.Property<DateTime?>("AssignedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("AssignmentRetryCount")
+                        .HasColumnType("integer");
+
                     b.Property<string>("CustomerId")
                         .IsRequired()
                         .HasColumnType("text");
@@ -251,6 +254,12 @@ namespace OrderService.Infrastructure.Migrations
 
                     b.Property<Guid?>("DriverId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("LastAssignmentAttempt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("NextAssignmentAttempt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");

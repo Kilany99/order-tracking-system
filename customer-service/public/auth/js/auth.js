@@ -74,7 +74,7 @@ class AuthService {
   }
   
   // Initialize AuthService .
-  const authService = new AuthService('http://localhost:5000');
+  const authService = new AuthService('https://localhost:7094');
   
   // Form Submissions
   $('#loginForm').submit(async (e) => {

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace OrderService.Domain.Entities;
+namespace OrderService.Domain.Models;
 
 public record DriverOrderResponse(
     Guid OrderId,

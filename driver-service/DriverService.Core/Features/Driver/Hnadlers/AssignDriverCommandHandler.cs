@@ -51,7 +51,8 @@ namespace DriverService.Core.Features.Driver.Handlers
 
                     await _kafkaProducer.ProduceDriverAssignedEvent(
                         request.OrderId,
-                        assignedDriver.Id);
+                        assignedDriver.Id,
+                        assignedDriver.Name);
                     _logger.LogInformation($"Driver : {assignedDriver.Id} assinged successfully to order Id: {request.OrderId} ");
 
                     return assignedDriver.Id;

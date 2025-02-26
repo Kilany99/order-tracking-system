@@ -1,6 +1,5 @@
-﻿using Confluent.Kafka;
-
-namespace OrderService.API.Models;
+﻿
+namespace OrderService.Domain.Models;
 
 public class OrderCreatedEvent
 {

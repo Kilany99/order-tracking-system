@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
-using OrderService.Domain.Entities;
+using OrderService.Domain.Models;
 using OrderService.Infrastructure.Services;
 using System.Collections.Concurrent;
 using System.Net.Http;

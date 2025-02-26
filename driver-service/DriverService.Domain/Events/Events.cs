@@ -6,12 +6,14 @@ public class DriverAssignedEvent
     public Guid OrderId { get; }
     public Guid DriverId { get; }
     public DateTime Timestamp { get; }
+    public string Name { get; }
 
-    public DriverAssignedEvent(Guid orderId, Guid driverId, DateTime timestamp)
+    public DriverAssignedEvent(Guid orderId, Guid driverId, string name,DateTime timestamp)
     {
         OrderId = orderId;
         DriverId = driverId;
         Timestamp = timestamp;
+        Name = name;
     }
 }
 

@@ -1,5 +1,4 @@
-﻿
-namespace OrderService.Domain.Entities;
+﻿namespace OrderService.Domain.Models;
 
 public class DriverResponse
 {

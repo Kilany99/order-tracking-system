@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using OrderService.Application.Features.Orders.Commands;
 using OrderService.Application.Responses;
 using OrderService.Domain.Entities;
+using OrderService.Domain.Models;
 using OrderService.Infrastructure.Producers;
 using OrderService.Infrastructure.Repositories;
 using System;

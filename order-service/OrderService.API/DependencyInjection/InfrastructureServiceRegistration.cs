@@ -10,6 +10,8 @@ using OrderService.Application.Features.Routes.Handlers;
 using OrderService.Application.Features.Routes.Queries;
 using OrderService.Application.Responses;
 using OrderService.Domain.Interfaces;
+using OrderService.Domain.Models;
+using OrderService.Infrastructure.Channels;
 using OrderService.Infrastructure.Clients;
 using OrderService.Infrastructure.Data;
 using OrderService.Infrastructure.Repositories;
@@ -50,6 +52,9 @@ public static class InfrastructureServiceRegistration
         services.AddHttpClient<IRoutingService, OSRMRoutingService>();
         services.AddMemoryCache();
         services.AddScoped<IRoutingService, OSRMRoutingService>();
+        services.AddSingleton<IOrderProcessingChannel, OrderProcessingChannel>();
+
+        services.AddHostedService<PendingAssignmentProcessor>();
 
         return services;
     }

@@ -125,7 +125,7 @@ public class DriversController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to assign driver");
-            return BadRequest($"An Error Occured while assiging driver! :{ex.Message}");
+            return BadRequest($"An Error Occured while assiging driver!");
         }
     }
 

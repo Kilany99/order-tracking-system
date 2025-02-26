@@ -7,7 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace OrderService.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class updateSchema : Migration
+    public partial class updatedSchema : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -63,7 +63,10 @@ namespace OrderService.Infrastructure.Migrations
                     Status = table.Column<int>(type: "integer", nullable: false),
                     DeliveryLatitude = table.Column<double>(type: "double precision", nullable: false),
                     DeliveryLongitude = table.Column<double>(type: "double precision", nullable: false),
-                    AssignedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    AssignedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    AssignmentRetryCount = table.Column<int>(type: "integer", nullable: false),
+                    LastAssignmentAttempt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    NextAssignmentAttempt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {

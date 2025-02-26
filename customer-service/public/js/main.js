@@ -1,9 +1,9 @@
 // Redirect to auth.html if not authenticated
 $(document).ready(() => {
     const token = localStorage.getItem('jwtToken');
-    if (!token) {
-      window.location.href = 'auth/auth.html';
-    }
+  //  if (!token) {
+   //   window.location.href = 'auth/auth.html';
+    //}
   
     // Logout Button
     $('#logout').click(() => {
@@ -27,10 +27,10 @@ $(document).ready(() => {
     document.addEventListener('click', resetTimer);
 
     // Initial check on page load
-    document.addEventListener('DOMContentLoaded', () => {
-      if (!authService.isAuthenticated() && window.location.pathname !== '/auth/login') {
-        window.location.href = '/auth/login';
-      }
-    });
+   // document.addEventListener('DOMContentLoaded', () => {
+     // if (!authService.isAuthenticated() && window.location.pathname !== '/auth/login') {
+       // window.location.href = '/auth/login';
+     // }
+   // });
     });
   });

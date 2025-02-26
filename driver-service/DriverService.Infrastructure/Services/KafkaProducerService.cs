@@ -14,7 +14,7 @@ public  interface IKafkaProducerService
 {
     Task ProduceLocationUpdateAsync(Guid driverId, double lat, double lon);
     Task ProduceAssignmentFailedEvent(Guid orderId, string reason);
-    Task ProduceDriverAssignedEvent(Guid orderId, Guid driverId);
+    Task ProduceDriverAssignedEvent(Guid orderId, Guid driverId,string driverName);
 }
 public class KafkaProducerService : IKafkaProducerService, IDisposable
 {
@@ -97,7 +97,7 @@ public class KafkaProducerService : IKafkaProducerService, IDisposable
         }
     }
 
-    public async Task ProduceDriverAssignedEvent(Guid orderId, Guid driverId)
+    public async Task ProduceDriverAssignedEvent(Guid orderId, Guid driverId,string driverName)
     {
         try
         {
@@ -105,7 +105,7 @@ public class KafkaProducerService : IKafkaProducerService, IDisposable
             await _driverAssignedProducer.ProduceAsync(_driverAssignedTopic, new Message<string, DriverAssignedEvent>
             {
                 Key = orderId.ToString(),
-                Value = new DriverAssignedEvent(orderId, driverId, DateTime.UtcNow)
+                Value = new DriverAssignedEvent(orderId, driverId, driverName ,DateTime.UtcNow)
             });
         }
         catch (Exception ex)

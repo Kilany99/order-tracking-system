@@ -19,7 +19,12 @@ public interface IOrderRepository
     Task<IEnumerable<Order>> GetOrdersByDriver(Guid driverId);
     Task<bool> SaveChangesAsync();
 
+    Task<IEnumerable<Order>> GetOrdersWithPendingAssignmentAsync();
+    Task UpdateOrderAssignmentAttemptAsync(Guid orderId, int retryCount, DateTime nextAttemptTime);
+    Task<(int RetryCount, DateTime LastAttemptTime)?> GetOrderAssignmentAttemptsAsync(Guid orderId);
 }
+
+
 public class OrderRepository : IOrderRepository
 {
     private readonly OrderDbContext _context;
@@ -110,6 +115,68 @@ public class OrderRepository : IOrderRepository
             return [];
         }
     }
+    public async Task<IEnumerable<Order>> GetOrdersWithPendingAssignmentAsync()
+    {
+        try
+        {
+            return await _context.Orders
+                .Where(o => o.Status == OrderStatus.Created &&
+                           (o.LastAssignmentAttempt == null ||
+                            o.NextAssignmentAttempt <= DateTime.UtcNow))
+                .OrderBy(o => o.NextAssignmentAttempt)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "//Order Repo//:Error retrieving orders with pending assignment");
+            throw;
+        }
+    }
+
+    public async Task UpdateOrderAssignmentAttemptAsync(
+        Guid orderId,
+        int retryCount,
+        DateTime nextAttemptTime)
+    {
+        try
+        {
+            var order = await GetByIdAsync(orderId);
+            if (order == null)
+            {
+                _logger.LogError($"Order {orderId} not found");
+                return;
+            }
+
+            order.AssignmentRetryCount = retryCount;
+            order.LastAssignmentAttempt = DateTime.UtcNow;
+            order.NextAssignmentAttempt = nextAttemptTime;
+
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation(
+                "//Order Repo//:Updated assignment attempt for order {OrderId}. Retry count: {RetryCount}, Next attempt: {NextAttempt}",
+                orderId,
+                retryCount,
+                nextAttemptTime);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "//Order Repo//:Error updating assignment attempt for order {OrderId}", orderId);
+            throw;
+        }
+    }
+
+    public async Task<(int RetryCount, DateTime LastAttemptTime)?> GetOrderAssignmentAttemptsAsync(Guid orderId)
+    {
+        var order = await GetByIdAsync(orderId);
+        if (order == null || order.LastAssignmentAttempt == null)
+        {
+            return null;
+        }
+
+        return (order.AssignmentRetryCount, order.LastAssignmentAttempt.Value);
+    }
+
     public async Task<bool> SaveChangesAsync()
     {
         return await _context.SaveChangesAsync() >= 0;

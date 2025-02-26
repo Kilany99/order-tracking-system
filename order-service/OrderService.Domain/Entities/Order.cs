@@ -12,6 +12,11 @@ public class Order : Entity<Guid>
     public double DeliveryLongitude { get; set; }
     public DateTime? AssignedAt { get; set; }
 
+    public int AssignmentRetryCount { get; set; }
+    public DateTime? LastAssignmentAttempt { get; set; }
+    public DateTime? NextAssignmentAttempt { get; set; }
+
+
     // Factory method for controlled creation
     public static Order Create(
         string customerId,
@@ -53,6 +58,10 @@ public class Order : Entity<Guid>
 
     public void MarkAsCancelled() => Status = OrderStatus.Cancelled;
     public void SetDriverId(Guid driverId) => DriverId = driverId;
+
+    public bool NeedsRetry(Order order, DateTime currentTime) => order.Status == OrderStatus.Created &&
+               order.NextAssignmentAttempt.HasValue &&
+               order.NextAssignmentAttempt.Value <= currentTime;
 }
 
 public enum OrderStatus { Created, Preparing, OutForDelivery, Delivered, Cancelled }

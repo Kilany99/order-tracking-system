@@ -3,8 +3,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OrderService.Infrastructure.Serialization;
-using OrderService.Domain.Entities;
 using System.Text.Json;
+using OrderService.Domain.Models;
 
 namespace OrderService.Infrastructure.Producers
 {

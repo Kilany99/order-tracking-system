@@ -3,9 +3,9 @@ const path = require('path');
 const app = express();
 app.use((req, res, next) => {
   const protectedRoutes = [
-    '/order/order-track',
-    '/order/new-order-form',
-    '/api/orders'
+   // '/order/order-track',
+    //'/order/new-order-form',
+    //'/api/orders'
   ];
 
   if (protectedRoutes.some(route => req.path.startsWith(route))) {

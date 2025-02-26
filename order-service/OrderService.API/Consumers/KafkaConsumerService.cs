@@ -1,9 +1,9 @@
 ﻿using Confluent.Kafka;
 using Microsoft.AspNetCore.SignalR;
 
-using OrderService.API.Models;
 using OrderService.Domain.Entities;
 using OrderService.Domain.Interfaces;
+using OrderService.Domain.Models;
 using OrderService.Infrastructure.Clients;
 using OrderService.Infrastructure.Hubs;
 using OrderService.Infrastructure.Repositories;
@@ -18,19 +18,20 @@ public class KafkaConsumerService : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IConfiguration _configuration;
     private readonly CancellationTokenSource _stoppingCts;
-    private readonly Channel<Models.OrderCreatedEvent> _orderChannel;
+    private readonly IOrderProcessingChannel _orderChannel;
     private readonly Channel<DriverLocationEvent> _locationChannel;
     private readonly IProducer<string,OrderAssignmentFailedEvent> _failProducer;
     public KafkaConsumerService(
         ILogger<KafkaConsumerService> logger,
         IServiceScopeFactory scopeFactory,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IOrderProcessingChannel processingChannel)
     {
         _logger = logger;
         _scopeFactory = scopeFactory;
         _configuration = configuration;
         _stoppingCts = new CancellationTokenSource();
-        _orderChannel = Channel.CreateUnbounded<Models.OrderCreatedEvent>();
+        _orderChannel = processingChannel;
         _locationChannel = Channel.CreateUnbounded<DriverLocationEvent>();
         var producerConfig = new ProducerConfig
         {
@@ -82,7 +83,7 @@ public class KafkaConsumerService : BackgroundService
     {
         var config = new ConsumerConfig
         {
-            BootstrapServers = _configuration["Kafka:BootstrapServers"],
+            BootstrapServers = _configuration["Kafka:Bootstra..pServers"],
             GroupId = $"{_configuration["Kafka:GroupId"]}-orders",
             AutoOffsetReset = AutoOffsetReset.Earliest,
             EnableAutoCommit = false
@@ -90,8 +91,8 @@ public class KafkaConsumerService : BackgroundService
 
         try
         {
-            using var consumer = new ConsumerBuilder<string, Models.OrderCreatedEvent>(config)
-                .SetValueDeserializer(new JsonDeserializer<Models.OrderCreatedEvent>())
+            using var consumer = new ConsumerBuilder<string, OrderCreatedEvent>(config)
+                .SetValueDeserializer(new JsonDeserializer<OrderCreatedEvent>())
                 .Build();
 
             var topic = _configuration["Kafka:OrderCreated"];
@@ -198,8 +199,8 @@ public class KafkaConsumerService : BackgroundService
         var driverClient = scope.ServiceProvider.GetRequiredService<IDriverClient>();
         var producer = scope.ServiceProvider.GetRequiredService<IProducer<string, DriverAssignedEvent>>();
         var orderUpdateService = scope.ServiceProvider.GetRequiredService<IOrderUpdateService>();
-        Exception? lastError = null;
         var orderRepository = scope.ServiceProvider.GetRequiredService<IOrderRepository>();
+        Exception? lastError = null;
 
         await foreach (var orderEvent in _orderChannel.Reader.ReadAllAsync(stoppingToken))
         {
@@ -207,15 +208,27 @@ public class KafkaConsumerService : BackgroundService
             {
                 _logger.LogInformation("Processing order {OrderId}", orderEvent.OrderId);
 
-                // Send initial status update
-                await orderUpdateService.SendOrderStatusUpdate(
-                    orderEvent.OrderId,
-                    OrderStatus.Created);
+                var order = await orderRepository.GetByIdAsync(orderEvent.OrderId);
+                if (order == null)
+                {
+                    _logger.LogError("Order not found with ID {OrderId}", orderEvent.OrderId);
+                    continue;
+                }
 
-                // Implementing a retry mechanisim with exponential backoff until assign a driver to the order
-                int retryCount = 0;
-                TimeSpan delay = TimeSpan.FromMilliseconds(initialDelayMs);
+                // Send initial status update only if this is the first attempt
+                if (order.AssignmentRetryCount == 0)
+                {
+                    await orderUpdateService.SendOrderStatusUpdate(
+                        orderEvent.OrderId,
+                        OrderStatus.Created);
+                }
+
+                // Initialize retry parameters
+                int retryCount = order.AssignmentRetryCount;
+                TimeSpan delay = TimeSpan.FromMilliseconds(
+                    Math.Min(initialDelayMs * Math.Pow(2, retryCount), maxDelayMs));
                 Guid? driverId = null;
+
                 while (!stoppingToken.IsCancellationRequested && driverId == null)
                 {
                     try
@@ -229,7 +242,15 @@ public class KafkaConsumerService : BackgroundService
                     {
                         lastError = ex;
                         retryCount++;
-                        _logger.LogWarning("Driver assignment failed for order {OrderId}. Attempt {RetryCount}/{MaxRetries}. Retrying in {Delay}ms",
+
+                        // Update order with retry information
+                        order.AssignmentRetryCount = retryCount;
+                        order.LastAssignmentAttempt = DateTime.UtcNow;
+                        order.NextAssignmentAttempt = DateTime.UtcNow.Add(delay);
+                        await orderRepository.SaveChangesAsync();
+
+                        _logger.LogWarning(
+                            "Driver assignment failed for order {OrderId}. Attempt {RetryCount}/{MaxRetries}. Retrying in {Delay}ms",
                             orderEvent.OrderId, retryCount, maxRetryAttempts, delay.TotalMilliseconds);
 
                         await Task.Delay(delay, stoppingToken);
@@ -237,37 +258,46 @@ public class KafkaConsumerService : BackgroundService
                             Math.Min(delay.TotalMilliseconds * 2, maxDelayMs));
                     }
                 }
-                if (driverId == null) //If we reach here that means max retries has been exceeded and driver not assigned 
+
+                if (driverId == null) // Max retries exceeded
                 {
-                    _logger.LogError("Permanent failure assigning driver to order {OrderId} after {MaxRetries} attempts",
+                    _logger.LogError(
+                        "Permanent failure assigning driver to order {OrderId} after {MaxRetries} attempts",
                         orderEvent.OrderId, maxRetryAttempts);
-                    await OnAssignmentFailure(orderEvent, lastError, orderRepository,orderUpdateService, stoppingToken);
-                     continue;
-                }
-                var order = await orderRepository.GetByIdAsync(orderEvent.OrderId);
-                if (order == null)
-                {
-                    _logger.LogError("Order not found with ID {OrderId}", orderEvent.OrderId);
+                    await OnAssignmentFailure(orderEvent, lastError, orderRepository, orderUpdateService, stoppingToken);
                     continue;
                 }
 
+                // Assignment successful - update order
                 order.DriverId = driverId;
                 order.MarkAsPreparing();
+                order.AssignmentRetryCount = retryCount;
+                order.LastAssignmentAttempt = DateTime.UtcNow;
+                order.NextAssignmentAttempt = null; // Clear next attempt as assignment succeeded
                 await orderRepository.SaveChangesAsync();
+
                 // Send preparing status with driver ID
                 await orderUpdateService.SendOrderStatusUpdate(
                     orderEvent.OrderId,
                     OrderStatus.Preparing,
                     driverId);
-                _logger.LogInformation("Order {OrderId} info has been updated with the driverId {driverId} ", orderEvent.OrderId, driverId);
 
-                await producer.ProduceAsync("drivers-assigned", new Message<string, DriverAssignedEvent>
-                {
-                    Key = orderEvent.OrderId.ToString(),
-                    Value = new DriverAssignedEvent(orderEvent.OrderId, driverId.Value, DateTime.UtcNow)
-                }, stoppingToken);
+                _logger.LogInformation(
+                    "Order {OrderId} info has been updated with the driverId {driverId}",
+                    orderEvent.OrderId, driverId);
 
-                _logger.LogInformation("Assigned driver {DriverId} to order {OrderId}",
+                // Publish driver assigned event
+                await producer.ProduceAsync(
+                    "drivers-assigned",
+                    new Message<string, DriverAssignedEvent>
+                    {
+                        Key = orderEvent.OrderId.ToString(),
+                        Value = new DriverAssignedEvent(orderEvent.OrderId, driverId.Value, DateTime.UtcNow)
+                    },
+                    stoppingToken);
+
+                _logger.LogInformation(
+                    "Assigned driver {DriverId} to order {OrderId}",
                     driverId, orderEvent.OrderId);
             }
             catch (OperationCanceledException)
@@ -279,11 +309,11 @@ public class KafkaConsumerService : BackgroundService
             {
                 _logger.LogError(ex, "Critical error processing order {OrderId}", orderEvent.OrderId);
                 await OnAssignmentFailure(orderEvent, lastError, orderRepository, orderUpdateService, stoppingToken);
-
             }
         }
     }
 
+    
     private async Task ProcessLocationMessages(CancellationToken stoppingToken)
     {
         await foreach (var locationEvent in _locationChannel.Reader.ReadAllAsync(stoppingToken))
@@ -344,7 +374,7 @@ public class KafkaConsumerService : BackgroundService
             }
         }
     }
-    private async Task OnAssignmentFailure(Models.OrderCreatedEvent orderEvent,Exception? lastError,
+    private async Task OnAssignmentFailure(OrderCreatedEvent orderEvent,Exception? lastError,
         IOrderRepository orderRepository, IOrderUpdateService orderUpdateService, CancellationToken stoppingToken)
     {
 
