@@ -1,0 +1,38 @@
+// docs/architecture/driver-service.puml
+@startuml Driver Service Architecture
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Driver Service - Component Architecture
+
+Container_Boundary(driver_service, "Driver Service") {
+    Component(api_controllers, "API Controllers", "ASP.NET Core", "Handles HTTP requests")
+    Component(location_hub, "Location Hub", "SignalR", "Real-time location updates")
+    
+    Component(location_processor, "Location Processor", "Service", "Processes location updates")
+    Component(assignment_service, "Assignment Service", "Service", "Assigns drivers to orders")
+    Component(metrics, "Metrics", "Service", "Performance monitoring")
+    
+    Component(mongo_repository, "MongoDB Repository", "Service", "Driver data access")
+    Component(redis_cache, "Redis Cache", "Service", "Location caching")
+    
+    Component(kafka_producer, "Kafka Producer", "Service", "Publishes events")
+}
+
+System_Ext(kafka, "Kafka")
+System_Ext(mongodb, "MongoDB")
+System_Ext(redis, "Redis")
+System_Ext(prometheus, "Prometheus")
+
+Rel(api_controllers, assignment_service, "Uses")
+Rel(location_hub, location_processor, "Uses")
+
+Rel(location_processor, redis_cache, "Uses")
+Rel(assignment_service, mongo_repository, "Uses")
+
+Rel(redis_cache, redis, "Reads/Writes")
+Rel(mongo_repository, mongodb, "Reads/Writes")
+
+Rel(kafka_producer, kafka, "Publishes")
+Rel(metrics, prometheus, "Exposes")
+
+@enduml

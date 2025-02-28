@@ -12,6 +12,8 @@ using Serilog;
 using StackExchange.Redis;
 using System.Reflection;
 using System.Text;
+using Prometheus;
+
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
@@ -100,6 +102,9 @@ if (app.Environment.IsDevelopment())
 
 }
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+// Add Prometheus metrics endpoint
+app.UseMetricServer();
+app.UseHttpMetrics();
 
 app.UseCors("AllowAll");
 app.UseRouting();

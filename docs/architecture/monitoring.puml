@@ -1,0 +1,30 @@
+// docs/architecture/monitoring.puml
+@startuml Monitoring Architecture
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Monitoring Architecture
+
+Container_Boundary(monitoring, "Monitoring System") {
+    Component(prometheus, "Prometheus", "Metrics Collection", "Collects and stores metrics")
+    Component(grafana, "Grafana", "Visualization", "Displays metrics dashboards")
+    
+    Component(order_metrics, "Order Service Metrics", "Endpoint", "/metrics")
+    Component(driver_metrics, "Driver Service Metrics", "Endpoint", "/metrics")
+    Component(notification_metrics, "Notification Service Metrics", "Endpoint", "/metrics")
+}
+
+System_Ext(order_service, "Order Service")
+System_Ext(driver_service, "Driver Service")
+System_Ext(notification_service, "Notification Service")
+
+Rel(prometheus, order_metrics, "Scrapes")
+Rel(prometheus, driver_metrics, "Scrapes")
+Rel(prometheus, notification_metrics, "Scrapes")
+
+Rel(order_metrics, order_service, "Exposes")
+Rel(driver_metrics, driver_service, "Exposes")
+Rel(notification_metrics, notification_service, "Exposes")
+
+Rel(grafana, prometheus, "Queries")
+
+@enduml

@@ -1,5 +1,6 @@
 
 using Microsoft.Extensions.Logging;
+using OrderService.Infrastructure.Metrics;
 using StackExchange.Redis;
 
 namespace OrderService.Infrastructure.Services;
@@ -8,13 +9,17 @@ public class RedisCacheService
 {
     private readonly IDatabase _database;
     private readonly ILogger<RedisCacheService> _logger;
+    private readonly OrderMetrics _metrics;
 
     public RedisCacheService(
         IConnectionMultiplexer redis,
-        ILogger<RedisCacheService> logger)
+        ILogger<RedisCacheService> logger,
+        OrderMetrics metrics)
     {
         _database = redis.GetDatabase();
         _logger = logger;
+        _metrics = metrics;
+
     }
 
     public async Task CacheDriverLocationAsync(Guid driverId, double lat, double lon)
@@ -30,6 +35,8 @@ public class RedisCacheService
         var value = await _database.StringGetAsync(key);
 
         if (!value.HasValue) return null;
+
+        _metrics.RecordCacheAccess(true);
 
         var parts = value.ToString().Split(',');
         if (parts.Length != 2 ||

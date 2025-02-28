@@ -1,0 +1,20 @@
+# monitoring/prometheus/prometheus.yml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'order-service'
+    static_configs:
+      - targets: ['order-service:50']
+    metrics_path: '/metrics'
+
+  - job_name: 'driver-service'
+    static_configs:
+      - targets: ['driver-service:80']
+    metrics_path: '/metrics'
+
+  - job_name: 'notification-service'
+    static_configs:
+      - targets: ['notification-service:80']
+    metrics_path: '/metrics'

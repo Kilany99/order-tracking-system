@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Logging;
 using OrderService.Domain.Entities;
 using OrderService.Infrastructure.Clients;
+using OrderService.Infrastructure.Metrics;
 using OrderService.Infrastructure.Services;
 
 namespace OrderService.Infrastructure.Hubs
@@ -11,13 +12,16 @@ namespace OrderService.Infrastructure.Hubs
         private readonly ICustomConnectionManager _connectionManager;
         private readonly IDriverClient _driverLocationService;
         private readonly ILogger<TrackingHub> _logger;
-        private readonly IHubContext<TrackingHub> _hubContext;
+        private readonly OrderMetrics _metrics;
 
-        public TrackingHub(ICustomConnectionManager connectionManager, IDriverClient driverLocationService, ILogger<TrackingHub> logger)
+        public TrackingHub(ICustomConnectionManager connectionManager,
+            IDriverClient driverLocationService, ILogger<TrackingHub> logger,
+            OrderMetrics metrics)
         {
             _connectionManager = connectionManager;
             _driverLocationService = driverLocationService;
             _logger = logger;
+            _metrics = metrics;
 
         }
 
@@ -63,11 +67,15 @@ namespace OrderService.Infrastructure.Hubs
         
         public async Task UpdateDriverPosition(double lat, double lng)
         {
+            var startTime = DateTime.UtcNow;
+
             var driverId = Context.User?.FindFirst("driverId")?.Value;
             if (!string.IsNullOrEmpty(driverId))
             {
                 await _driverLocationService.UpdateDriverPosition(Guid.Parse(driverId), lat, lng);
                 await Clients.Group(driverId).SendAsync("PositionUpdated", lat, lng);
+                var latency = (DateTime.UtcNow - startTime).TotalSeconds;
+                _metrics.RecordLocationUpdate(latency);
             }
         }
         public async Task SendOrderStatusUpdate(Guid orderId, OrderStatus status, Guid? driverId = null)

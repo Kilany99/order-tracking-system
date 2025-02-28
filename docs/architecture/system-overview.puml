@@ -1,0 +1,46 @@
+// docs/architecture/system-overview.puml
+@startuml System Overview
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Order Tracking System - System Architecture
+
+Person(customer, "Customer", "User placing and tracking orders")
+Person(driver, "Driver", "Delivery personnel")
+
+System_Boundary(order_tracking, "Order Tracking System") {
+    Container(web_app, "Web Application", "React", "Customer frontend for placing and tracking orders")
+    Container(mobile_app, "Mobile App", "React Native", "Driver app for managing deliveries")
+    
+    Container(order_service, "Order Service", "ASP.NET Core", "Handles order management and tracking")
+    Container(driver_service, "Driver Service", "ASP.NET Core", "Manages driver assignments and locations")
+    Container(notification_service, "Notification Service", "ASP.NET Core", "Handles all system notifications")
+    
+    ContainerDb(postgres_db, "PostgreSQL", "Database", "Stores order and user data")
+    ContainerDb(mongodb, "MongoDB", "Database", "Stores driver data")
+    ContainerDb(redis, "Redis", "Cache", "Caches driver locations")
+    
+    Container(kafka, "Kafka", "Message Broker", "Event streaming platform")
+    Container(prometheus, "Prometheus", "Metrics", "Metrics collection")
+    Container(grafana, "Grafana", "Dashboard", "Metrics visualization")
+}
+
+Rel(customer, web_app, "Uses", "HTTPS")
+Rel(driver, mobile_app, "Uses", "HTTPS")
+
+Rel(web_app, order_service, "Uses", "HTTPS/WebSocket")
+Rel(mobile_app, driver_service, "Uses", "HTTPS/WebSocket")
+
+Rel(order_service, kafka, "Publishes/Subscribes", "Events")
+Rel(driver_service, kafka, "Publishes/Subscribes", "Events")
+Rel(notification_service, kafka, "Subscribes", "Events")
+
+Rel(order_service, postgres_db, "Reads/Writes")
+Rel(driver_service, mongodb, "Reads/Writes")
+Rel(driver_service, redis, "Caches")
+
+Rel(prometheus, order_service, "Collects metrics")
+Rel(prometheus, driver_service, "Collects metrics")
+Rel(prometheus, notification_service, "Collects metrics")
+Rel(grafana, prometheus, "Visualizes")
+
+@enduml

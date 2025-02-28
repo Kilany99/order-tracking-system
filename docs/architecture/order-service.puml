@@ -1,0 +1,37 @@
+@startuml Order Service Architecture
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Order Service - Component Architecture
+
+Container_Boundary(order_service, "Order Service") {
+    Component(api_controllers, "API Controllers", "ASP.NET Core", "Handles HTTP requests")
+    Component(hub, "SignalR Hub", "ASP.NET Core", "Real-time updates")
+    
+    Component(kafka_consumer, "Kafka Consumer", "Background Service", "Processes events")
+    Component(kafka_producer, "Kafka Producer", "Service", "Publishes events")
+    
+    Component(order_processing, "Order Processing", "Service", "Business logic")
+    Component(metrics, "Metrics", "Service", "Performance monitoring")
+
+    Component(repository, "Repository", "EF Core", "Data access")
+}
+// Interface(http_api, "HTTP API", "")
+// Interface(websocket_api, "WebSocket API", "")
+
+System_Ext(kafka, "Kafka")
+System_Ext(db, "PostgreSQL")
+System_Ext(prometheus, "Prometheus")
+
+Rel(api_controllers, order_processing, "Uses", "->")
+Rel(hub, order_processing, "Uses", "->")
+Rel(kafka_consumer, order_processing, "Uses", "->")
+
+Rel(order_processing, repository, "Uses", "->")
+Rel(repository, db, "Reads/Writes", "->")
+
+Rel(kafka_consumer, kafka, "Subscribes", "->")
+Rel(kafka_producer, kafka, "Publishes", "->")
+
+Rel(metrics, prometheus, "Exposes", "->")
+
+@enduml

@@ -14,6 +14,7 @@ using OrderService.Domain.Models;
 using OrderService.Infrastructure.Channels;
 using OrderService.Infrastructure.Clients;
 using OrderService.Infrastructure.Data;
+using OrderService.Infrastructure.Metrics;
 using OrderService.Infrastructure.Repositories;
 using OrderService.Infrastructure.Routing.Interfaces;
 using OrderService.Infrastructure.Routing.Models;
@@ -56,6 +57,7 @@ public static class InfrastructureServiceRegistration
         services.AddSingleton<IOrderProcessingChannel<DriverLocationEvent>, LocationProcessingChannel>();
         services.AddSingleton<IOrderProcessingChannel<OrderPickedUpEvent>, OrderPickupProcessingChannel>();
         services.AddSingleton<IOrderProcessingChannel<OrderDeliveredEvent>, OrderDeliveredProcessingChannel>();
+        services.AddSingleton<OrderMetrics>();
 
 
         services.AddHostedService<PendingAssignmentProcessor>();

@@ -22,6 +22,7 @@ using OrderService.Infrastructure.Hubs;
 using OrderService.Domain.Models;
 using Microsoft.AspNetCore.Authentication;
 using OrderService.Infrastructure.Auth;
+using Prometheus;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -221,7 +222,9 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 //app.UseMiddleware<JwtValidationMiddleware>();
 //app.UseCors("AllowAll");
 app.UseCors("AllowCustomerApp");
-
+// Add Prometheus metrics endpoint
+app.UseMetricServer();
+app.UseHttpMetrics();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();

@@ -1,0 +1,29 @@
+// docs/architecture/notification-service.puml
+@startuml Notification Service Architecture
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Notification Service - Component Architecture
+
+Container_Boundary(notification_service, "Notification Service") {
+    Component(kafka_consumer, "Kafka Consumer", "Background Service", "Consumes events")
+    
+    Component(notification_handler, "Notification Handler", "Service", "Processes notifications")
+    Component(email_service, "Email Service", "Service", "Sends emails")
+    Component(metrics, "Metrics", "Service", "Performance monitoring")
+    
+    Component(template_engine, "Template Engine", "Service", "Email templates")
+}
+
+System_Ext(kafka, "Kafka")
+System_Ext(smtp, "SMTP Server")
+System_Ext(prometheus, "Prometheus")
+
+Rel(kafka_consumer, notification_handler, "Uses")
+Rel(notification_handler, email_service, "Uses")
+Rel(email_service, template_engine, "Uses")
+
+Rel(kafka_consumer, kafka, "Subscribes")
+Rel(email_service, smtp, "Sends")
+Rel(metrics, prometheus, "Exposes")
+
+@enduml

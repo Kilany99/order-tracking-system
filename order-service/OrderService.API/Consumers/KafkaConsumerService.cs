@@ -7,6 +7,7 @@ using OrderService.Domain.Models;
 using OrderService.Infrastructure.Channels;
 using OrderService.Infrastructure.Clients;
 using OrderService.Infrastructure.Hubs;
+using OrderService.Infrastructure.Metrics;
 using OrderService.Infrastructure.Repositories;
 using OrderService.Infrastructure.Serialization;
 using OrderService.Infrastructure.Services;
@@ -23,8 +24,10 @@ public class KafkaConsumerService : BackgroundService
     private readonly IOrderProcessingChannel<DriverLocationEvent> _locationChannel;
     private readonly IOrderProcessingChannel<OrderPickedUpEvent> _pickupChannel;
     private readonly IOrderProcessingChannel<OrderDeliveredEvent> _deliveredchannel;
-
     private readonly IProducer<string,OrderAssignmentFailedEvent> _failProducer;
+
+    private readonly OrderMetrics _metrics;
+
     public KafkaConsumerService(
         ILogger<KafkaConsumerService> logger,
         IServiceScopeFactory scopeFactory,
@@ -32,7 +35,8 @@ public class KafkaConsumerService : BackgroundService
         IOrderProcessingChannel<OrderCreatedEvent> orderCreatedChannel,
         IOrderProcessingChannel<OrderPickedUpEvent> pickupChannel,
         IOrderProcessingChannel<DriverLocationEvent> locationChannel,
-        IOrderProcessingChannel<OrderDeliveredEvent> deliveredchannel)
+        IOrderProcessingChannel<OrderDeliveredEvent> deliveredchannel,
+        OrderMetrics metrics)
     {
         _logger = logger;
         _scopeFactory = scopeFactory;
@@ -42,6 +46,7 @@ public class KafkaConsumerService : BackgroundService
         _pickupChannel = pickupChannel;
         _locationChannel = locationChannel;
         _deliveredchannel = deliveredchannel;
+        _metrics = metrics;
         var producerConfig = new ProducerConfig
         {
             BootstrapServers = configuration["kafka:BootstrapServers"],
@@ -218,6 +223,7 @@ public class KafkaConsumerService : BackgroundService
 
         await foreach (var orderEvent in _orderChannel.Reader.ReadAllAsync(stoppingToken))
         {
+            using var timer = _metrics.BeginMessageProcessing("order");
             try
             {
                 _logger.LogInformation("Processing order {OrderId}", orderEvent.OrderId);
@@ -309,7 +315,15 @@ public class KafkaConsumerService : BackgroundService
                         Value = new DriverAssignedEvent(orderEvent.OrderId, driverId.Value, DateTime.UtcNow)
                     },
                     stoppingToken);
-
+                _metrics.RecordMessageProcessed("order");
+                if (driverId != null)
+                {
+                    _metrics.RecordDriverAssignmentAttempt(true);
+                }
+                else
+                {
+                    _metrics.RecordDriverAssignmentAttempt(false);
+                }
                 _logger.LogInformation(
                     "Assigned driver {DriverId} to order {OrderId}",
                     driverId, orderEvent.OrderId);
@@ -322,6 +336,7 @@ public class KafkaConsumerService : BackgroundService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Critical error processing order {OrderId}", orderEvent.OrderId);
+                _metrics.RecordMessageError("order");
                 await OnAssignmentFailure(orderEvent, lastError, orderRepository, orderUpdateService, stoppingToken);
             }
         }
@@ -332,6 +347,7 @@ public class KafkaConsumerService : BackgroundService
     {
         await foreach (var locationEvent in _locationChannel.Reader.ReadAllAsync(stoppingToken))
         {
+            using var timer = _metrics.BeginMessageProcessing("location");
             try
             {
                 using var scope = _scopeFactory.CreateScope();
@@ -377,6 +393,9 @@ public class KafkaConsumerService : BackgroundService
                     locationEvent.Latitude,
                     locationEvent.Longitude
                     );
+
+                _metrics.RecordMessageProcessed("location");
+
                 _logger.LogInformation(
                       "Cached location update successfully for {DriverId}",
                       locationEvent.DriverId);
@@ -385,6 +404,8 @@ public class KafkaConsumerService : BackgroundService
             {
                 _logger.LogError(ex, "Error processing location for driver {DriverId}",
                     locationEvent.DriverId);
+                _metrics.RecordMessageError("location");
+
             }
         }
     }
