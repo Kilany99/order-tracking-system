@@ -1,4 +1,5 @@
 ﻿using OrderService.Domain.Entities;
+using OrderService.Domain.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,6 +18,10 @@ public class OrderResponse
     public OrderStatus Status { get; set; }
     public double DeliveryLatitude { get; set; }
     public double DeliveryLongitude { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DriverDetails? DriverDetails { get; private set; }
+
+    public OrderResponse() { }
 
     public OrderResponse(Guid id, string cutomerId, string delvAddress, OrderStatus orderStatus, double latitude, double longitude)
     {
@@ -26,6 +31,7 @@ public class OrderResponse
         DeliveryLatitude = latitude;
         DeliveryLongitude = longitude;
         Status = orderStatus;
+        CreatedAt = DateTime.UtcNow;
 
     }
     public OrderResponse(Guid id, Guid driverId, string cutomerId, string delvAddress, OrderStatus orderStatus, double latitude, double longitude)
@@ -37,6 +43,7 @@ public class OrderResponse
         DeliveryLatitude = latitude;
         DeliveryLongitude = longitude;
         Status = orderStatus;
+        CreatedAt = DateTime.UtcNow;
 
     }
 }

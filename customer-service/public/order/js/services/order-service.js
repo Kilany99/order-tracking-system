@@ -378,4 +378,31 @@ testDriverMarker() {
       setTimeout(() => this.connectSignalR(orderId), 5000);
     }
   }
+
+  async getActiveOrders() {
+    try {
+        const response = await this._secureRequest(
+            `${this.baseUrl}/api/orders/my-active-orders`,
+            { method: 'GET' }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching active orders:', error);
+        throw error;
+    }
+}
+
+async getAllOrders() {
+    try {
+        const response = await this._secureRequest(
+            `${this.baseUrl}/api/orders/my-orders`,
+            { method: 'GET' }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching all orders:', error);
+        throw error;
+    }
+}
+
 }

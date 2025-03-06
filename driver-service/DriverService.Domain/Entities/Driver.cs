@@ -14,7 +14,6 @@ public class Driver
     public DateTime RegistrationDate { get; set; }
     public double CurrentLatitude { get; set; }
     public double CurrentLongitude { get; set; }
-
     public DateTime UpdatedAt { get; set; }
     public DriverStatus Status { get; private set; } = DriverStatus.Offline;
     public DateTime? LastAvailableTime { get; private set; }

@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Logging;
 using OrderService.Infrastructure.Metrics;
 using StackExchange.Redis;
+using System.Text.Json;
 
 namespace OrderService.Infrastructure.Services;
 
@@ -48,5 +49,48 @@ public class RedisCacheService
         }
 
         return (lat, lon);
+    }
+
+
+    public async Task<T?> GetAsync<T>(string key)
+    {
+        try
+        {
+            var value = await _database.StringGetAsync(key);
+            if (!value.HasValue)
+                return default;
+
+            return JsonSerializer.Deserialize<T>(value!);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting value from cache for key {Key}", key);
+            return default;
+        }
+    }
+
+    public async Task SetAsync<T>(string key, T value, TimeSpan? expiry = null)
+    {
+        try
+        {
+            var serializedValue = JsonSerializer.Serialize(value);
+            await _database.StringSetAsync(key, serializedValue, expiry);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting value in cache for key {Key}", key);
+        }
+    }
+
+    public async Task RemoveAsync(string key)
+    {
+        try
+        {
+            await _database.KeyDeleteAsync(key);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing key {Key} from cache", key);
+        }
     }
 }

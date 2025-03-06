@@ -29,47 +29,68 @@ namespace DriverService.Core.Features.Driver.Handlers
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                // checks if the order assigned already to any driver
-                var Isdriver = await _repository.IsOrderAssignedToAnyDriverAsync(request.OrderId);
-                if(Isdriver != null)
-                    throw new InvalidOperationException($"This order is assigned already to driverId : {Isdriver.Id}");
+
+                // Check existing assignment
+                var existingDriver = await _repository.IsOrderAssignedToAnyDriverAsync(request.OrderId);
+                if (existingDriver != null)
+                {
+                    _logger.LogInformation(
+                        "Order {OrderId} is already assigned to driver {DriverId}",
+                        request.OrderId,
+                        existingDriver.Id);
+
+                    // Instead of throwing an exception, return the existing driver's ID
+                    return existingDriver.Id;
+                }
+
                 var driver = await _repository.FindNearestDriverAsync(
-                request.Latitude,
-                request.Longitude);
+                    request.Latitude,
+                    request.Longitude);
 
                 if (driver == null)
                 {
                     await _kafkaProducer.ProduceAssignmentFailedEvent(
                         request.OrderId,
-                        "//CommandHandler//:No available drivers");
+                        "No available drivers");
                     throw new NoAvailableDriversException();
                 }
-                _logger.LogInformation($"Found nearest driver with Id : {driver.Id} and trying to assign driver...");
+
+                using var transaction = await _repository.BeginTransactionAsync();
                 try
                 {
                     var assignedDriver = await _repository.AssignDriverAsync(driver.Id, request.OrderId);
                     assignedDriver.AcceptOrder(request.OrderId);
                     await _repository.SaveChangesAsync();
+
                     await _kafkaProducer.ProduceDriverAssignedEvent(
                         request.OrderId,
                         assignedDriver.Id,
                         assignedDriver.Name);
-                    _logger.LogInformation($"Driver : {assignedDriver.Id} assinged successfully to order Id: {request.OrderId} ");
+
+                    await transaction.CommitAsync();
+
+                    _logger.LogInformation(
+                        "Driver {DriverId} assigned successfully to order {OrderId}",
+                        assignedDriver.Id,
+                        request.OrderId);
 
                     return assignedDriver.Id;
                 }
                 catch (Exception ex)
                 {
+                    await transaction.RollbackAsync();
                     await _kafkaProducer.ProduceAssignmentFailedEvent(
                         request.OrderId,
                         ex.Message);
                     throw;
                 }
-
             }
-            catch (Exception) when (cancellationToken.IsCancellationRequested)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                throw new OperationCanceledException(cancellationToken);
+                _logger.LogError(ex,
+                    "Error assigning driver to order {OrderId}",
+                    request.OrderId);
+                throw;
             }
         }
     }

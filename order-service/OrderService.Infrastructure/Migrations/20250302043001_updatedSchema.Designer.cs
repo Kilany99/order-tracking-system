@@ -12,7 +12,7 @@ using OrderService.Infrastructure.Data;
 namespace OrderService.Infrastructure.Migrations
 {
     [DbContext(typeof(OrderDbContext))]
-    [Migration("20250226042533_updatedSchema")]
+    [Migration("20250302043001_updatedSchema")]
     partial class updatedSchema
     {
         /// <inheritdoc />
@@ -237,6 +237,9 @@ namespace OrderService.Infrastructure.Migrations
                     b.Property<int>("AssignmentRetryCount")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("CustomerId")
                         .IsRequired()
                         .HasColumnType("text");
@@ -252,6 +255,9 @@ namespace OrderService.Infrastructure.Migrations
                     b.Property<double>("DeliveryLongitude")
                         .HasColumnType("double precision");
 
+                    b.Property<Guid?>("DriverDetailsId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("DriverId")
                         .HasColumnType("uuid");
 
@@ -266,7 +272,34 @@ namespace OrderService.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("DriverDetailsId");
+
                     b.ToTable("Orders");
+                });
+
+            modelBuilder.Entity("OrderService.Domain.Models.DriverDetails", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<double?>("CurrentLatitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("CurrentLongitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DriverDetails");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -318,6 +351,15 @@ namespace OrderService.Infrastructure.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("OrderService.Domain.Entities.Order", b =>
+                {
+                    b.HasOne("OrderService.Domain.Models.DriverDetails", "DriverDetails")
+                        .WithMany()
+                        .HasForeignKey("DriverDetailsId");
+
+                    b.Navigation("DriverDetails");
                 });
 #pragma warning restore 612, 618
         }

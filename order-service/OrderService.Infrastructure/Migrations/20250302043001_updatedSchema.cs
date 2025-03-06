@@ -53,24 +53,18 @@ namespace OrderService.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Orders",
+                name: "DriverDetails",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    CustomerId = table.Column<string>(type: "text", nullable: false),
-                    DriverId = table.Column<Guid>(type: "uuid", nullable: true),
-                    DeliveryAddress = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    Status = table.Column<int>(type: "integer", nullable: false),
-                    DeliveryLatitude = table.Column<double>(type: "double precision", nullable: false),
-                    DeliveryLongitude = table.Column<double>(type: "double precision", nullable: false),
-                    AssignedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    AssignmentRetryCount = table.Column<int>(type: "integer", nullable: false),
-                    LastAssignmentAttempt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    NextAssignmentAttempt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    PhoneNumber = table.Column<string>(type: "text", nullable: false),
+                    CurrentLatitude = table.Column<double>(type: "double precision", nullable: true),
+                    CurrentLongitude = table.Column<double>(type: "double precision", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Orders", x => x.Id);
+                    table.PrimaryKey("PK_DriverDetails", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -179,6 +173,34 @@ namespace OrderService.Infrastructure.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "Orders",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    CustomerId = table.Column<string>(type: "text", nullable: false),
+                    DriverId = table.Column<Guid>(type: "uuid", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    DeliveryAddress = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    Status = table.Column<int>(type: "integer", nullable: false),
+                    DeliveryLatitude = table.Column<double>(type: "double precision", nullable: false),
+                    DeliveryLongitude = table.Column<double>(type: "double precision", nullable: false),
+                    AssignedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    AssignmentRetryCount = table.Column<int>(type: "integer", nullable: false),
+                    LastAssignmentAttempt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    NextAssignmentAttempt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    DriverDetailsId = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Orders", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Orders_DriverDetails_DriverDetailsId",
+                        column: x => x.DriverDetailsId,
+                        principalTable: "DriverDetails",
+                        principalColumn: "Id");
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetRoleClaims_RoleId",
                 table: "AspNetRoleClaims",
@@ -215,6 +237,11 @@ namespace OrderService.Infrastructure.Migrations
                 table: "AspNetUsers",
                 column: "NormalizedUserName",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Orders_DriverDetailsId",
+                table: "Orders",
+                column: "DriverDetailsId");
         }
 
         /// <inheritdoc />
@@ -243,6 +270,9 @@ namespace OrderService.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "AspNetUsers");
+
+            migrationBuilder.DropTable(
+                name: "DriverDetails");
         }
     }
 }

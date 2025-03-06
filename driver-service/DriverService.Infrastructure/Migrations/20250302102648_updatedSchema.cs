@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace DriverService.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class newSchema : Migration
+    public partial class updatedSchema : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

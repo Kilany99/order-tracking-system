@@ -3,6 +3,8 @@ using OrderService.Infrastructure.Helpers;
 using OrderService.Infrastructure.Data;
 using OrderService.Domain.Entities;
 using Microsoft.Extensions.Logging;
+using OrderService.Infrastructure.Clients;
+using OrderService.Domain.Extensions;
 namespace OrderService.Infrastructure.Repositories;
 
 
@@ -23,6 +25,9 @@ public interface IOrderRepository
     Task UpdateOrderAssignmentAttemptAsync(Guid orderId, int retryCount, DateTime nextAttemptTime);
     Task<(int RetryCount, DateTime LastAttemptTime)?> GetOrderAssignmentAttemptsAsync(Guid orderId);
 
+    Task<List<Order>> GetOrdersByCustomerIdAsync(string customerId);
+    Task<List<Order>> GetActiveOrdersByCustomerIdAsync(string customerId);
+
 
 }
 
@@ -32,10 +37,13 @@ public class OrderRepository : IOrderRepository
 {
     private readonly OrderDbContext _context;
     private readonly ILogger<OrderRepository> _logger;
-    public OrderRepository(OrderDbContext context,ILogger<OrderRepository> logger)
+    private readonly IDriverClient _driverClient;
+
+    public OrderRepository(OrderDbContext context,ILogger<OrderRepository> logger, IDriverClient driverClient)
     {
         _context = context;
         _logger = logger;
+        _driverClient = driverClient;
     }
 
     public async Task AddAsync(Order order)
@@ -179,8 +187,67 @@ public class OrderRepository : IOrderRepository
 
         return (order.AssignmentRetryCount, order.LastAssignmentAttempt.Value);
     }
+    public async Task<List<Order>> GetOrdersByCustomerIdAsync(string customerId)
+    {
+        var orders = await _context.Orders
+            .Where(o => o.CustomerId == customerId)
+            .OrderByDescending(o => o.CreatedAt)
+            .ToListAsync();
 
+        // Get unique driver IDs
+        var driverIds = orders
+            .Where(o => o.DriverId.HasValue)
+            .Select(o => o.DriverId.Value)
+            .Distinct();
 
+        // Fetch driver details in batch
+        var drivers = await _driverClient.GetDriversForOrdersAsync(driverIds);
+        var driverMap = drivers.ToDictionary(d => d.Id);
+
+        // Enrich orders with driver details
+        foreach (var order in orders)
+        {
+            if (order.DriverId.HasValue && driverMap.TryGetValue(order.DriverId.Value, out var driver))
+            {
+                order.EnrichWithDriverDetails(driver);
+            }
+        }
+
+        return orders;
+    }
+
+    public async Task<List<Order>> GetActiveOrdersByCustomerIdAsync(string customerId)
+    {
+        var activeStatuses = new[] {
+            OrderStatus.Created,
+            OrderStatus.Preparing,
+            OrderStatus.OutForDelivery
+        };
+
+        var orders = await _context.Orders
+            .Where(o => o.CustomerId == customerId && activeStatuses.Contains(o.Status))
+            .OrderByDescending(o => o.CreatedAt)
+            .ToListAsync();
+        
+
+        var driverIds = orders
+            .Where(o => o.DriverId.HasValue)
+            .Select(o => o.DriverId.Value)
+            .Distinct();
+
+        var drivers = await _driverClient.GetDriversForOrdersAsync(driverIds);
+        var driverMap = drivers.ToDictionary(d => d.Id);
+
+        foreach (var order in orders)
+        {
+            if (order.DriverId.HasValue && driverMap.TryGetValue(order.DriverId.Value, out var driver))
+            {
+                order.EnrichWithDriverDetails(driver);
+            }
+        }
+
+        return orders;
+    }
     public async Task<bool> SaveChangesAsync()
     {
         return await _context.SaveChangesAsync() >= 0;

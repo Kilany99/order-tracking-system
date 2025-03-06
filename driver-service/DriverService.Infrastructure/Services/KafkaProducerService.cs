@@ -6,9 +6,8 @@ using DriverService.Domain.Events;
 using Microsoft.Extensions.Logging;
 using DnsClient.Internal;
 using System.Text;
-using System.Text.Json;
 using DriverService.Domain.Serialization;
-using NetTopologySuite.Utilities;
+using DriverService.Infrastructure.DriversMetrics;
 namespace DriverService.Infrastructure.Services;
 
 public  interface IKafkaProducerService
@@ -34,11 +33,16 @@ public class KafkaProducerService : IKafkaProducerService, IDisposable
     private readonly IProducer<string, OrderPickedUpEvent> _orderPickedUpProducer;
     private readonly string _orderPickedUpTopic;
     private readonly string _orderDeliveredTopic;
+
+    private readonly DriverMetrics _metrics;
+
     public KafkaProducerService(
         IConfiguration config,
-        ILogger<KafkaProducerService> logger)
+        ILogger<KafkaProducerService> logger,
+        DriverMetrics metrics)
     {
         _logger = logger;
+        _metrics = metrics;
         var producerConfig = new ProducerConfig
         {
             BootstrapServers = config["Kafka:BootstrapServers"],
@@ -82,6 +86,7 @@ public class KafkaProducerService : IKafkaProducerService, IDisposable
         _assignmentFailedTopic = config["Kafka:AssignmentFailed"];
         _orderPickedUpTopic = config["Kafka:OrderPickedUp"];
         _orderDeliveredTopic = config["Kafka:OrderDelivered"];
+        _logger.LogInformation("Kafka producer is running...");
     }
 
     public async Task ProduceLocationUpdateAsync(
@@ -89,6 +94,7 @@ public class KafkaProducerService : IKafkaProducerService, IDisposable
         double lat,
         double lon)
     {
+        var startTime = DateTime.UtcNow;
         _logger.LogInformation($"producing location update for {driverId.ToString()}");
         try
         {
@@ -108,6 +114,8 @@ public class KafkaProducerService : IKafkaProducerService, IDisposable
            var deliveryReport = await _producer.ProduceAsync(_locationTopic, message);
             _logger.LogInformation(
                 $"Delivered to: {deliveryReport.TopicPartitionOffset}");
+            _metrics.RecordLocationUpdate((DateTime.UtcNow - startTime).TotalSeconds);
+
         }
         catch (ProduceException<string, string> e)
         {
@@ -126,9 +134,11 @@ public class KafkaProducerService : IKafkaProducerService, IDisposable
                 Key = orderId.ToString(),
                 Value = new DriverAssignedEvent(orderId, driverId, driverName ,DateTime.UtcNow)
             });
+            _metrics.RecordDriverAssignment(true);
         }
         catch (Exception ex)
         {
+            _metrics.RecordDriverAssignment(false);
             _logger.LogError(ex, "Failed to publish driver assignment event");
         }
     }

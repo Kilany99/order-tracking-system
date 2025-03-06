@@ -15,9 +15,11 @@ using DriverService.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using Microsoft.AspNetCore.Authorization;
 using DriverService.Domain.Entities;
 using System.Security.Claims;
+using DriverService.Infrastructure.DriversMetrics;
+using DriverService.Domain.Models;
+using DriverService.Core.Features.Driver.Validators;
 namespace DriverService.API.DependencyInjection
 {
     public static class InfrastructureServiceRegistration
@@ -33,6 +35,8 @@ namespace DriverService.API.DependencyInjection
             });
             services.AddScoped<IDriverAssignmentService, DriverAssignmentService>();
             services.AddScoped<IDriverRepository, DriverRepository>();
+            services.AddSingleton<DriverMetrics>();
+
             return services;
         }
 
@@ -59,7 +63,9 @@ namespace DriverService.API.DependencyInjection
             services.AddScoped<IRequestHandler<GetDriverByOrderIdQuery,DriverResponse>,GetDriverByOrderIdQueryHandler>();
             services.AddScoped<IRequestHandler<OrderPickupCommand,Unit>, OrderPickupCommandHandler>();
             services.AddScoped<IRequestHandler<OrderDeliveredCommand, Unit>, OrderDeliveredCommandHandler>();
-
+            services.AddScoped<IRequestHandler<GetDriversBatchQuery, List<DriverDetailsDto>>, GetDriversBatchQueryHandler>();
+            services.AddValidatorsFromAssemblyContaining<RegisterDriverCommandValidator>()
+                    .AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
             return services;
         }
 

@@ -4,6 +4,7 @@ using DriverService.Domain.Exceptions;
 using DriverService.Domain.Interfaces;
 using DriverService.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using NpgsqlTypes;
 using StackExchange.Redis;
@@ -168,8 +169,18 @@ namespace DriverService.Infrastructure.Repositories
                 throw new Exception("Driver not found for give order id {orderId}");
             return new DriverResponse(driver.Id,driver.Name,driver.VehicleType,driver.IsAvailable);
         }
-        
 
+        public async Task<List<Driver>> GetDriversByIdsAsync(IEnumerable<Guid> driverIds)
+        {
+            return await _context.Drivers
+                .AsNoTracking()
+                .Where(d => driverIds.Contains(d.Id))
+                .ToListAsync();
+        }
+        public async Task<IDbContextTransaction> BeginTransactionAsync()
+        {
+            return await _context.Database.BeginTransactionAsync();
+        }
         private double CalculateDistance(
       double lat1, double lon1,
       double lat2, double lon2)

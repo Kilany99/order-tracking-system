@@ -10,7 +10,7 @@ namespace DriverService.Core.Features.Driver.Validators
             RuleFor(x => x.Email).NotEmpty().EmailAddress();
             RuleFor(x => x.Password).NotEmpty().MinimumLength(6);
             RuleFor(x => x.VehicleType).NotEmpty().MaximumLength(50);
-
+          
         }
     }
 }

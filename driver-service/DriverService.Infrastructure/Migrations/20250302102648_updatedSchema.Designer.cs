@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DriverService.Infrastructure.Migrations
 {
     [DbContext(typeof(DriverDbContext))]
-    [Migration("20250220113207_newSchema")]
-    partial class newSchema
+    [Migration("20250302102648_updatedSchema")]
+    partial class updatedSchema
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

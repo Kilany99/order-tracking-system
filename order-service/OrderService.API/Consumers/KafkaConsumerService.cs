@@ -102,7 +102,7 @@ public class KafkaConsumerService : BackgroundService
     {
         var config = new ConsumerConfig
         {
-            BootstrapServers = _configuration["Kafka:Bootstra..pServers"],
+            BootstrapServers = _configuration["Kafka:BootstrapServers"],
             GroupId = $"{_configuration["Kafka:GroupId"]}-orders",
             AutoOffsetReset = AutoOffsetReset.Earliest,
             EnableAutoCommit = false
@@ -234,6 +234,27 @@ public class KafkaConsumerService : BackgroundService
                     _logger.LogError("Order not found with ID {OrderId}", orderEvent.OrderId);
                     continue;
                 }
+                // Check if order already has a driver
+                if (order.DriverId.HasValue)
+                {
+                    _logger.LogInformation(
+                        "Order {OrderId} already has driver {DriverId} assigned",
+                        order.Id,
+                        order.DriverId);
+
+                    // Make sure status is updated
+                    if (order.Status == OrderStatus.Created)
+                    {
+                        order.MarkAsPreparing();
+                        await orderRepository.SaveChangesAsync();
+
+                        await orderUpdateService.SendOrderStatusUpdate(
+                            order.Id,
+                            OrderStatus.Preparing,
+                            order.DriverId);
+                    }
+                    continue;
+                }
 
                 // Send initial status update only if this is the first attempt
                 if (order.AssignmentRetryCount == 0)
@@ -287,6 +308,7 @@ public class KafkaConsumerService : BackgroundService
                     await OnAssignmentFailure(orderEvent, lastError, orderRepository, orderUpdateService, stoppingToken);
                     continue;
                 }
+                _logger.LogInformation("Updating order {OrderId} with the found driverId {driverId}", orderEvent.OrderId,driverId);
 
                 // Assignment successful - update order
                 order.DriverId = driverId;
@@ -295,6 +317,7 @@ public class KafkaConsumerService : BackgroundService
                 order.LastAssignmentAttempt = DateTime.UtcNow;
                 order.NextAssignmentAttempt = null; // Clear next attempt as assignment succeeded
                 await orderRepository.SaveChangesAsync();
+                _logger.LogInformation("Sending preparing status to signalR with driver ID {diverId}", driverId);
 
                 // Send preparing status with driver ID
                 await orderUpdateService.SendOrderStatusUpdate(
@@ -498,7 +521,7 @@ public class KafkaConsumerService : BackgroundService
                     continue;
                 }
 
-                order.MarkAsDelivered();
+                order.MarkAsOutForDelivery();
                 await orderRepository.SaveChangesAsync();
 
                 await orderUpdateService.SendOrderStatusUpdate(
@@ -596,6 +619,27 @@ public class KafkaConsumerService : BackgroundService
             {
                 _logger.LogError(ex, "Error processing delivered event for order {OrderId}", deliveredEvent.OrderId);
             }
+        }
+    }
+
+    private async Task EnsureOrderStatusConsistency(
+    Order order,
+    IOrderRepository repository,
+    IOrderUpdateService updateService)
+    {
+        if (order.DriverId.HasValue && order.Status == OrderStatus.Created)
+        {
+            _logger.LogWarning(
+                "Inconsistent state detected: Order {OrderId} has driver but status is Created",
+                order.Id);
+
+            order.MarkAsPreparing();
+            await repository.SaveChangesAsync();
+
+            await updateService.SendOrderStatusUpdate(
+                order.Id,
+                OrderStatus.Preparing,
+                order.DriverId);
         }
     }
 

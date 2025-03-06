@@ -336,8 +336,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Order Tracking System",
-  "uid": "order-tracking",
+  "title": "Order Tracking System - Production",
+  "uid": "order-tracking-prod",
   "version": 1,
   "weekStart": ""
 }

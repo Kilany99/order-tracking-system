@@ -13,6 +13,8 @@ using StackExchange.Redis;
 using System.Reflection;
 using System.Text;
 using Prometheus;
+using AutoMapper;
+using DriverService.Core.Mappings;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -34,6 +36,7 @@ builder.Services.AddAuth(builder.Configuration);    //Extension method to regist
 builder.Services.AddSingleton<IKafkaProducerService, KafkaProducerService>();
 builder.Services.AddScoped<IPasswordHasher<DriverAuth>, PasswordHasher<DriverAuth>>();
 builder.Services.AddScoped<IMongoDbService, MongoDbService>();
+builder.Services.AddAutoMapper(typeof(DriverMappingProfile).Assembly);
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Order Service API", Version = "v1" });
@@ -98,7 +101,7 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-    //app.UseHttpsRedirection();
+    app.UseHttpsRedirection();
 
 }
 app.UseMiddleware<ExceptionHandlingMiddleware>();

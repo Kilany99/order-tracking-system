@@ -21,7 +21,7 @@ public class GetDriverByIdQueryHandler : IRequestHandler<GetDriverByIdQuery, Dri
     {
         var driver = await _driverRepository.GetByIdAsync(request.Id) ?? throw new DriverNotFoundException("Driver not found!");
         var driverResponse = new DriverResponse(driver.Id, driver.VehicleType, driver.Name, driver.IsAvailable);
-        if(driverResponse.CurrentOrderId != null)
+        if(driver.CurrentOrderId != null)
             driverResponse.SetOrderId(driver.CurrentOrderId.Value);
         return driverResponse;
     }

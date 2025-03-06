@@ -1,4 +1,6 @@
 ﻿using DriverService.Domain.Entities;
+using Microsoft.EntityFrameworkCore.Storage;
+using System.Threading.Tasks;
 
 namespace DriverService.Domain.Interfaces;
 
@@ -19,5 +21,10 @@ namespace DriverService.Domain.Interfaces;
     Task<Driver> AssignDriverAsync(Guid driverId, Guid orderId);
     Task<Driver?> IsOrderAssignedToAnyDriverAsync(Guid orderId);
     Task<DriverResponse> GetByOrderId(Guid orderId);
+
+    Task<List<Driver>> GetDriversByIdsAsync(IEnumerable<Guid> driverIds);
+
+    Task<IDbContextTransaction> BeginTransactionAsync();
+
 
 }

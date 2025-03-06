@@ -35,6 +35,7 @@ public class PendingAssignmentProcessor(
                     if (attempt.NextAssignmentAttempt <= DateTime.UtcNow)
                     {
                         var order = await orderRepository.GetByIdAsync(attempt.Id);
+
                         if (order != null && order.Status == OrderStatus.Created)
                         {
                             _logger.LogInformation("Found order with id {orderId} still pending and re-proccessing it...",order.Id);
@@ -54,7 +55,7 @@ public class PendingAssignmentProcessor(
                 _logger.LogError(ex, "Error processing pending assignments");
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+            await Task.Delay(TimeSpan.FromHours(0.5), stoppingToken);
         }
     }
     public override async Task StopAsync(CancellationToken cancellationToken)

@@ -3,6 +3,7 @@ using NotificationService.Domain.Enums;
 using NotificationService.Domain.Events;
 using NotificationService.Domain.Interfaces;
 using NotificationService.Domain.Templates;
+using NotificationService.Infrastructure.NotificationsMetrics;
 
 
 namespace NotificationService.Application.Services;
@@ -12,19 +13,24 @@ public class NotificationHandler : INotificationHandler
     private readonly IEmailService _emailService;
     private readonly ICustomerService _customerService;
     private readonly ILogger<NotificationHandler> _logger;
+    private readonly NotificationMetrics _metrics;
 
     public NotificationHandler(
         IEmailService emailService,
         ICustomerService customerService,
-        ILogger<NotificationHandler> logger)
+        ILogger<NotificationHandler> logger,
+        NotificationMetrics metrics)
     {
         _emailService = emailService;
         _customerService = customerService;
         _logger = logger;
+        _metrics = metrics;
     }
 
     public async Task HandleOrderNotificationAsync(OrderNotificationEvent notification)
     {
+        using var timer = _metrics.BeginNotificationProcessing();
+
         try
         {
             // Fetch customer info if email is missing
@@ -57,6 +63,8 @@ public class NotificationHandler : INotificationHandler
                 notification.Status,
                 notification.CustomerEmail,
                 notification.OrderId);
+            _metrics.RecordNotificationSent(true);
+            _metrics.RecordMessageProcessed(notification.Status.ToString());
         }
         catch (Exception ex)
         {
@@ -64,6 +72,8 @@ public class NotificationHandler : INotificationHandler
                 "Failed to send {Status} email notification for order {OrderId}",
                 notification.Status,
                 notification.OrderId);
+            _metrics.RecordNotificationSent(false);
+            _metrics.RecordMessageError(notification.Status.ToString());
             throw;
         }
     }

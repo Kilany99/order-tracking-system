@@ -6,6 +6,7 @@ using NotificationService.Domain.Interfaces;
 using NotificationService.Domain.Settings;
 using NotificationService.Infrastructure.Serialization;
 using NotificationService.Infrastructure.Services;
+using Prometheus;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -52,7 +53,8 @@ if (app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 
 }
-
+app.UseMetricServer();
+app.UseHttpMetrics();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseRouting();

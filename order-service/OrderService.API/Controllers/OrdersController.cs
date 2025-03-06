@@ -98,4 +98,30 @@ public class OrdersController : ControllerBase
         return Ok(new ApiResponse<List<OrderResponse>>(orders, "Orders fetched successfully"));
     }
 
+    [HttpGet("my-orders")]
+    public async Task<ActionResult<ApiResponse<List<OrderResponse>>>> GetMyOrders()
+    {
+        var customerId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(customerId))
+        {
+            return Unauthorized(new ApiResponse<List<OrderResponse>>(null, "Unauthorized"));
+        }
+
+        var orders = await _mediator.Send(new GetCustomerOrdersQuery(customerId));
+        return Ok(new ApiResponse<List<OrderResponse>>(orders, "Orders fetched successfully"));
+    }
+
+    [HttpGet("my-active-orders")]
+    public async Task<ActionResult<ApiResponse<List<OrderResponse>>>> GetMyActiveOrders()
+    {
+        var customerId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(customerId))
+        {
+            return Unauthorized(new ApiResponse<List<OrderResponse>>(null, "Unauthorized"));
+        }
+
+        var orders = await _mediator.Send(new GetActiveCustomerOrdersQuery(customerId));
+        return Ok(new ApiResponse<List<OrderResponse>>(orders, "Active orders fetched successfully"));
+    }
+
 }

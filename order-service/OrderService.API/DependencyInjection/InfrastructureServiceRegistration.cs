@@ -20,6 +20,8 @@ using OrderService.Infrastructure.Routing.Interfaces;
 using OrderService.Infrastructure.Routing.Models;
 using OrderService.Infrastructure.Routing.Services;
 using OrderService.Infrastructure.Services;
+using Polly;
+using Polly.Extensions.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
 
@@ -46,6 +48,7 @@ public static class InfrastructureServiceRegistration
                 new MediaTypeWithQualityHeaderValue("application/json"));
         })
         .AddHttpMessageHandler<ServiceAuthenticationHandler>();
+
         services.AddTransient<ServiceAuthenticationHandler>();
         services.AddScoped<IOrderUpdateService, OrderUpdateService>();
 
@@ -76,7 +79,8 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<IRequestHandler<UpdateOrderCommand, ApiResponse<Guid>>, UpdateOrderCommandHandler>();
         services.AddScoped<IRequestHandler<GetAllOrdersQuery, List<OrderResponse>>, GetAllOrdersQueryHandler>();
         services.AddScoped<IRequestHandler<DeleteOrderCommand, bool>, DeleteOrderCommandHandler>();
-
+        services.AddScoped<IRequestHandler<GetCustomerOrdersQuery , List<OrderResponse>>, GetCustomerOrdersQueryHandler>();
+        services.AddScoped<IRequestHandler<GetActiveCustomerOrdersQuery, List<OrderResponse>>, GetActiveCustomerOrdersQueryHandler>();
         //routes commands and queries 
         services.AddScoped<IRequestHandler<GetRouteQuery,RouteResponse>,GetRouteQueryHandler>();
         services.AddScoped<IRequestHandler<CalculateETACommand, TimeSpan>, CalculateETACommandHandler>();
@@ -86,4 +90,6 @@ public static class InfrastructureServiceRegistration
 
         return services;
     }
+
+
 }

@@ -43,7 +43,7 @@ public class DriverDbContext : DbContext
         {
             entity.HasKey(d => d.Id); // Primary key
             entity.HasIndex(d => d.IsAvailable);
-            entity.HasIndex(d => d.IsAvailable);
+
         });
     }
 }

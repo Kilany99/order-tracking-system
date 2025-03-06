@@ -16,6 +16,9 @@ namespace OrderService.Infrastructure.Clients
         Task<DriverLocation?> GetDriverLocation(Guid orderId);
         Task<IEnumerable<DriverOrderResponse>> GetActiveOrdersByDriver(Guid driverId);
         Task<bool> IsDriverAvailable(Guid driverId);
+
+        Task<DriverDetailsDto?> GetDriverDetailsAsync(Guid driverId);
+        Task<List<DriverDetailsDto>> GetDriversForOrdersAsync(IEnumerable<Guid> driverIds);
     }
 
     public class HttpDriverClient : IDriverClient
@@ -193,7 +196,41 @@ namespace OrderService.Infrastructure.Clients
                 return false;
             }
         }
+        public async Task<DriverDetailsDto?> GetDriverDetailsAsync(Guid driverId)
+        {
+            try
+            {
+                var response = await _httpClient.GetAsync($"/api/drivers/{driverId}");
+                if (response.IsSuccessStatusCode)
+                {
+                    return await response.Content.ReadFromJsonAsync<DriverDetailsDto>();
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching driver details for {DriverId}", driverId);
+                return null;
+            }
+        }
 
+        public async Task<List<DriverDetailsDto>> GetDriversForOrdersAsync(IEnumerable<Guid> driverIds)
+        {
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync("/api/drivers/batch", driverIds);
+                if (response.IsSuccessStatusCode)
+                {
+                    return await response.Content.ReadFromJsonAsync<List<DriverDetailsDto>>() ?? new List<DriverDetailsDto>();
+                }
+                return [];
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching batch driver details");
+                return [];
+            }
+        }
         private record DriverAvailabilityResponse(bool IsAvailable);
 
         private enum DriverStatus { Offline, Assigned ,Available, InDelivery }

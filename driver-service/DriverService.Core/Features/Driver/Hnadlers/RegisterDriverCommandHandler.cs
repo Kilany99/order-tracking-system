@@ -25,7 +25,7 @@ namespace DriverService.Core.Features.Driver.Hnadlers
                 Name = request.Name,
                 VehicleType = request.VehicleType,
                 IsAvailable = true,
-                RegistrationDate = DateTime.UtcNow
+                RegistrationDate = DateTime.UtcNow,
             };
 
             await _repository.AddAsync(driver);
@@ -36,11 +36,12 @@ namespace DriverService.Core.Features.Driver.Hnadlers
 
         private static DriverResponse MapToDriverResponse(Domain.Entities.Driver driver)
         {
-            return new DriverResponse(
+            var response =  new DriverResponse(
                 driver.Id,
                 driver.Name,
                 driver.VehicleType,
                 driver.IsAvailable);
+            return response;
         }
     }
 }

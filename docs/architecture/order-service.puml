@@ -15,8 +15,6 @@ Container_Boundary(order_service, "Order Service") {
 
     Component(repository, "Repository", "EF Core", "Data access")
 }
-// Interface(http_api, "HTTP API", "")
-// Interface(websocket_api, "WebSocket API", "")
 
 System_Ext(kafka, "Kafka")
 System_Ext(db, "PostgreSQL")

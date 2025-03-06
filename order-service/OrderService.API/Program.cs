@@ -23,6 +23,8 @@ using OrderService.Domain.Models;
 using Microsoft.AspNetCore.Authentication;
 using OrderService.Infrastructure.Auth;
 using Prometheus;
+using AutoMapper;
+using OrderService.Application.Mappings;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -83,7 +85,7 @@ builder.Services.AddSingleton<IOrderCreatedProducer, OrderCreatedProducer>();
 //builder.Services.AddHostedService<OrderAssignmentConsumer>();
 //builder.Services.AddHostedService<DriverLocationConsumer>();
 builder.Services.AddHostedService<KafkaConsumerService>();
-
+builder.Services.AddAutoMapper(typeof(OrderMappingProfile).Assembly);
 builder.Services.AddSingleton<IProducer<string, DriverAssignedEvent>>(sp =>
 {
     var config = new ProducerConfig

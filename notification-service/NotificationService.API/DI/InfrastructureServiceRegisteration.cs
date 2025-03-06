@@ -1,6 +1,7 @@
 ﻿using NotificationService.Domain.Events;
 using NotificationService.Domain.Interfaces;
 using NotificationService.Infrastructure.Channels;
+using NotificationService.Infrastructure.NotificationsMetrics;
 using NotificationService.Infrastructure.Serialization;
 using NotificationService.Infrastructure.Services;
 
@@ -14,6 +15,7 @@ public static class InfrastructureServiceRegisteration
         services.AddSingleton<OrderEventDeserializer>();
         services.AddHttpClient<ICustomerService, CustomerService>();
         services.AddScoped<IEmailService, GmailService>();
+        services.AddSingleton<NotificationMetrics>();  
 
 
         // Register channels

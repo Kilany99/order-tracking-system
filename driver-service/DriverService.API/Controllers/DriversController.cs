@@ -3,6 +3,7 @@ using DriverService.Core.Dtos;
 using DriverService.Core.Features.Driver.Commands;
 using DriverService.Core.Features.Driver.Queries;
 using DriverService.Domain.Entities;
+using DriverService.Domain.Models;
 using DriverService.Infrastructure.Services;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -125,7 +126,7 @@ public class DriversController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to assign driver");
-            return BadRequest($"An Error Occured while assiging driver!");
+            return BadRequest($"An Error Occured while assiging driver! :{ex.Message}");
         }
     }
 
@@ -226,6 +227,21 @@ public class DriversController : ControllerBase
         {
             _logger.LogError("An error occured during marking as delivered ex: {ex}", ex.Message);
             return StatusCode(500, "An error occured during marking as delivered");
+        }
+    }
+   // [Authorize(Policy = "DriverOrServicePolicy")]
+    [HttpPost("batch")]
+    public async Task<ActionResult<List<DriverDetailsDto>>> GetDriversBatch([FromBody] IEnumerable<Guid> driverIds)
+    {
+        try
+        {
+            var drivers = await _mediator.Send(new GetDriversBatchQuery(driverIds.ToList()));
+            return Ok(drivers);
+        }
+        catch (Exception ex) 
+        {
+            _logger.LogError(ex, "Error fetching drivers batch");
+            return StatusCode(500, "An error occurred while fetching drivers");
         }
     }
 }
